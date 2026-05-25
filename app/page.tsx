@@ -12,7 +12,21 @@ import { AccountsSection } from "@/components/AccountsSection";
 import { BudgetSection } from "@/components/BudgetSection";
 import { ContributionsSection } from "@/components/ContributionsSection";
 import { DebtsSection } from "@/components/DebtsSection";
+import { FinancialOverview } from "@/components/FinancialOverview";
 import { RetirementProjectionSection } from "@/components/RetirementProjectionSection";
+import {
+  dangerButton,
+  divider,
+  inputBase,
+  primaryButton,
+  rowHover,
+  secondaryButton,
+  sectionDescription,
+  sectionHeader,
+  sectionTitle,
+  surface,
+  transparentInput,
+} from "@/components/uiStyles";
 import {
   calculateBudgetTotals,
   calculateIncomeUsedPercent,
@@ -210,42 +224,6 @@ export default function Home() {
       }),
     [accounts, budgets, debts, investmentContributions, monthlyIncome],
   );
-
-  const kpis = [
-    {
-      label: "Net Worth",
-      value: formatCurrency(totals.netWorth),
-      detail: "Live account total",
-      tone: "emerald",
-    },
-    {
-      label: "Total Debt",
-      value: formatCurrency(totals.debt),
-      detail: `${formatCurrency(totals.debtPayments)}/mo payments`,
-      tone: "sky",
-    },
-    {
-      label: "Monthly Surplus",
-      value: formatCurrency(totals.monthlySurplus),
-      detail: `${formatCurrency(monthlyIncome)} income`,
-      tone: totals.monthlySurplus >= 0 ? "emerald" : "rose",
-    },
-    {
-      label: "Cash vs Invested",
-      value: `${Math.round((totals.cash / Math.max(totals.assets, 1)) * 100)}% cash`,
-      detail: `${formatCurrency(totals.cash)} cash / ${formatCurrency(
-        totals.assets,
-      )} assets`,
-      tone: "violet",
-    },
-  ];
-
-  const toneStyles: Record<string, string> = {
-    emerald: "bg-emerald-400/10 text-emerald-300",
-    sky: "bg-sky-400/10 text-sky-300",
-    rose: "bg-rose-400/10 text-rose-300",
-    violet: "bg-violet-400/10 text-violet-300",
-  };
 
   const contributionAccounts = useMemo(
     () => getContributionAccounts(accounts, investmentContributions),
@@ -728,10 +706,10 @@ export default function Home() {
           setOpenColorPicker((current) => (current === pickerId ? null : pickerId))
         }
         aria-label={`Change ${label} color`}
-        className={`${sizeClass} rounded-full border border-white/40 transition hover:ring-2 hover:ring-white/30 ${currentColor}`}
+        className={`${sizeClass} rounded-full border border-white/50 shadow-sm transition hover:ring-2 hover:ring-white/30 focus:outline-none focus:ring-2 focus:ring-emerald-300/40 ${currentColor}`}
       />
       {openColorPicker === pickerId ? (
-        <div className="absolute left-0 top-6 z-30 flex gap-1.5 rounded-lg border border-white/10 bg-neutral-950 p-2 shadow-xl">
+        <div className="absolute left-0 top-6 z-30 flex gap-1.5 rounded-lg border border-white/10 bg-neutral-950/95 p-2 shadow-2xl backdrop-blur">
           {colorOptions.map((color) => (
             <button
               key={color}
@@ -741,7 +719,7 @@ export default function Home() {
                 setOpenColorPicker(null);
               }}
               aria-label={`Use ${color.replace("bg-", "")} for ${label}`}
-              className={`size-6 rounded-full border transition ${color} ${
+            className={`size-6 rounded-full border shadow-sm transition ${color} ${
                 currentColor === color
                   ? "border-white ring-2 ring-white/40"
                   : "border-transparent hover:border-white/70"
@@ -759,30 +737,34 @@ export default function Home() {
 
   return (
     <main className="min-h-screen bg-neutral-950 text-neutral-100">
-      <div className="flex min-h-screen">
-        <aside className="hidden w-72 shrink-0 border-r border-white/10 bg-neutral-950/95 px-6 py-6 lg:flex lg:flex-col">
+      <div className="flex min-h-screen bg-[radial-gradient(circle_at_top_left,rgba(16,185,129,0.08),transparent_34%),linear-gradient(180deg,#0b0b0e_0%,#09090b_42%,#0b0b0d_100%)]">
+        <aside className="hidden w-72 shrink-0 border-r border-white/10 bg-neutral-950/80 px-6 py-6 backdrop-blur-xl lg:flex lg:flex-col">
           <div className="mb-5">
             <div className="flex items-center gap-3">
               <div className="grid size-10 place-items-center rounded-lg bg-emerald-400 text-lg font-black text-neutral-950">
                 {getInitials(brandName)}
               </div>
               <div className="min-w-0">
-                <p className="text-sm text-neutral-400">Budget Tool</p>
+                <p className="text-xs font-medium uppercase tracking-[0.12em] text-neutral-500">
+                  Budget Tool
+                </p>
                 <label className="block">
                   <span className="sr-only">Brand name</span>
                   <input
                     type="text"
                     value={brandName}
                     onChange={(event) => updateBrandName(event.target.value)}
-                    className="w-full rounded-md border border-transparent bg-transparent px-1 py-0.5 text-lg font-semibold tracking-tight text-neutral-100 outline-none transition hover:border-white/10 hover:bg-white/[0.03] focus:border-emerald-400/60 focus:bg-neutral-950/60"
+                    className="w-full rounded-md border border-transparent bg-transparent px-1 py-0.5 text-lg font-semibold tracking-tight text-neutral-100 outline-none transition hover:border-white/10 hover:bg-white/[0.04] focus:border-emerald-300/60 focus:bg-neutral-950/70"
                   />
                 </label>
               </div>
             </div>
           </div>
 
-          <div className="mb-6 rounded-lg border border-white/10 bg-white/[0.03] p-4">
-            <p className="text-sm font-medium">Cash cushion</p>
+          <div className="mb-6 rounded-lg border border-white/10 bg-white/[0.04] p-4 shadow-[0_16px_50px_rgba(0,0,0,0.22)]">
+            <p className="text-xs font-medium uppercase tracking-[0.08em] text-neutral-500">
+              Cash cushion
+            </p>
             <p className="mt-1 text-2xl font-semibold">
               {formatCurrency(totals.cash)}
             </p>
@@ -802,16 +784,16 @@ export default function Home() {
             </p>
           </div>
 
-          <nav className="space-y-1">
+          <nav className="space-y-1.5">
             {navItems.map((item) => (
               <button
                 key={item}
                 type="button"
                 onClick={() => handleNavClick(item)}
-                className={`flex w-full items-center justify-between rounded-md px-3 py-2 text-left text-sm transition ${
+                className={`flex w-full items-center justify-between rounded-md px-3 py-2.5 text-left text-sm transition ${
                   item === activeNav
-                    ? "bg-white text-neutral-950"
-                    : "text-neutral-400 hover:bg-white/5 hover:text-white"
+                    ? "bg-white text-neutral-950 shadow-sm"
+                    : "text-neutral-400 hover:bg-white/[0.06] hover:text-white"
                 }`}
               >
                 <span>{item}</span>
@@ -825,8 +807,8 @@ export default function Home() {
         </aside>
 
         <section className="flex min-w-0 flex-1 flex-col">
-          <header className="sticky top-0 z-10 border-b border-white/10 bg-neutral-950/85 px-4 py-4 backdrop-blur md:px-8">
-            <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+          <header className="sticky top-0 z-10 border-b border-white/10 bg-neutral-950/78 px-4 py-4 backdrop-blur-xl md:px-8">
+            <div className="mx-auto flex w-full max-w-7xl flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
               <div>
                 <label className="block">
                   <span className="sr-only">Brand name</span>
@@ -834,7 +816,7 @@ export default function Home() {
                     type="text"
                     value={brandName}
                     onChange={(event) => updateBrandName(event.target.value)}
-                    className="w-full rounded-md border border-transparent bg-transparent px-1 py-0.5 text-sm text-neutral-400 outline-none transition hover:border-white/10 hover:bg-white/[0.03] focus:border-emerald-400/60 focus:bg-neutral-950/60 focus:text-neutral-200"
+                    className="w-full rounded-md border border-transparent bg-transparent px-1 py-0.5 text-sm font-medium text-neutral-400 outline-none transition hover:border-white/10 hover:bg-white/[0.04] focus:border-emerald-300/60 focus:bg-neutral-950/70 focus:text-neutral-200"
                   />
                 </label>
                 <label className="block">
@@ -846,7 +828,7 @@ export default function Home() {
                     onChange={(event) =>
                       updateDashboardTitle(event.target.value)
                     }
-                    className="max-w-full rounded-md border border-transparent bg-transparent px-1 py-0.5 text-2xl font-semibold tracking-tight text-neutral-100 outline-none transition hover:border-white/10 hover:bg-white/[0.03] focus:border-emerald-400/60 focus:bg-neutral-950/60 md:text-3xl"
+                    className="max-w-full rounded-md border border-transparent bg-transparent px-1 py-0.5 text-2xl font-semibold tracking-tight text-neutral-50 outline-none transition hover:border-white/10 hover:bg-white/[0.04] focus:border-emerald-300/60 focus:bg-neutral-950/70 md:text-3xl"
                   />
                 </label>
                 <p className="mt-1 text-sm text-neutral-500">
@@ -871,14 +853,14 @@ export default function Home() {
                   <button
                     type="button"
                     onClick={exportData}
-                    className="w-fit rounded-md border border-white/10 px-3 py-2 text-sm text-neutral-300 transition hover:bg-white/5 hover:text-white"
+                    className={secondaryButton}
                   >
                     Export Data
                   </button>
                   <button
                     type="button"
                     onClick={startImportData}
-                    className="w-fit rounded-md border border-white/10 px-3 py-2 text-sm text-neutral-300 transition hover:bg-white/5 hover:text-white"
+                    className={secondaryButton}
                   >
                     Import Data
                   </button>
@@ -903,30 +885,12 @@ export default function Home() {
             </div>
           </header>
 
-          <div className="px-4 py-5 md:px-6 lg:px-8">
-            <section
-              id="overview"
-              className="scroll-mt-24 grid gap-3 sm:grid-cols-2 xl:grid-cols-4"
-            >
-              {kpis.map((kpi) => (
-                <article
-                  key={kpi.label}
-                  className="rounded-lg border border-white/10 bg-white/[0.035] p-4"
-                >
-                  <div className="flex items-start justify-between gap-4">
-                    <p className="text-sm text-neutral-400">{kpi.label}</p>
-                    <span
-                      className={`rounded-full px-2 py-1 text-xs font-medium ${toneStyles[kpi.tone]}`}
-                    >
-                      {kpi.detail}
-                    </span>
-                  </div>
-                  <p className="mt-5 text-3xl font-semibold tracking-tight">
-                    {kpi.value}
-                  </p>
-                </article>
-              ))}
-            </section>
+          <div className="mx-auto w-full max-w-7xl px-4 py-5 md:px-6 lg:px-8">
+            <FinancialOverview
+              retirementPlan={retirementPlan}
+              retirementProjection={retirementProjection}
+              totals={totals}
+            />
 
             <section className="mt-4 space-y-4">
               <BudgetSection
@@ -1017,14 +981,11 @@ export default function Home() {
               selectNumberInput={selectNumberInput}
             />
 
-            <section
-              id="goals"
-              className="mt-4 scroll-mt-24 rounded-lg border border-white/10 bg-white/[0.035]"
-            >
-              <div className="flex flex-col gap-3 border-b border-white/10 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+            <section id="goals" className={`mt-4 scroll-mt-24 ${surface}`}>
+              <div className={sectionHeader}>
                 <div>
-                  <h3 className="text-base font-semibold">Goals</h3>
-                  <p className="mt-1 text-sm text-neutral-500">
+                  <h3 className={sectionTitle}>Goals</h3>
+                  <p className={sectionDescription}>
                     Track the next actions that keep the plan moving.
                   </p>
                 </div>
@@ -1032,35 +993,35 @@ export default function Home() {
                   <button
                     type="button"
                     onClick={addGoal}
-                    className="w-fit rounded-md bg-emerald-400 px-3 py-2 text-sm font-semibold text-neutral-950 transition hover:bg-emerald-300"
+                    className={primaryButton}
                   >
                     Add goal
                   </button>
                   <button
                     type="button"
                     onClick={resetGoals}
-                    className="w-fit rounded-md border border-white/10 px-3 py-2 text-sm text-neutral-300 transition hover:bg-white/5 hover:text-white"
+                    className={secondaryButton}
                   >
                     Reset
                   </button>
                   <button
                     type="button"
                     onClick={exportActions}
-                    className="w-fit rounded-md border border-white/10 px-3 py-2 text-sm text-neutral-300 transition hover:bg-white/5 hover:text-white"
+                    className={secondaryButton}
                   >
                     Export
                   </button>
                 </div>
               </div>
 
-              <div className="divide-y divide-white/10">
+              <div className={divider}>
                 {goals.map((goal) => {
                   const isDone = completedActions.includes(goal.id);
 
                   return (
                     <div
                       key={goal.id}
-                      className="grid w-full gap-3 px-4 py-3 text-left transition hover:bg-white/[0.03] lg:grid-cols-[1fr_150px_140px_120px_auto_auto] lg:items-center"
+                      className={`grid w-full gap-3 px-4 py-3 text-left lg:grid-cols-[1fr_150px_140px_120px_auto_auto] lg:items-center ${rowHover}`}
                     >
                       <div className="min-w-0">
                         <label className="block">
@@ -1071,7 +1032,7 @@ export default function Home() {
                             onChange={(event) =>
                               updateGoal(goal.id, "title", event.target.value)
                             }
-                            className={`w-full rounded-md border border-transparent bg-transparent px-2 py-1 font-medium outline-none transition hover:border-white/10 hover:bg-neutral-950/40 focus:border-emerald-400/60 focus:bg-neutral-950/60 ${
+                            className={`${transparentInput} w-full px-2 py-1 font-medium ${
                               isDone
                                 ? "text-neutral-500 line-through"
                                 : "text-neutral-100"
@@ -1091,7 +1052,7 @@ export default function Home() {
                                   event.target.value,
                                 )
                               }
-                              className="w-full rounded-md border border-white/10 bg-neutral-950/60 px-2 py-1.5 text-sm text-neutral-300 outline-none focus:border-emerald-400/60"
+                              className={`${inputBase} w-full px-2 py-1.5 text-sm text-neutral-300`}
                             />
                           </label>
                           <label className="block">
@@ -1106,7 +1067,7 @@ export default function Home() {
                                   event.target.value,
                                 )
                               }
-                              className="w-full rounded-md border border-white/10 bg-neutral-950/60 px-2 py-1.5 text-sm text-neutral-300 outline-none focus:border-emerald-400/60"
+                              className={`${inputBase} w-full px-2 py-1.5 text-sm text-neutral-300`}
                             />
                           </label>
                         </div>
@@ -1119,12 +1080,12 @@ export default function Home() {
                           onChange={(event) =>
                             updateGoal(goal.id, "status", event.target.value)
                           }
-                          className="mt-1 w-full rounded-md border border-white/10 bg-neutral-950/60 px-2 py-2 text-sm text-neutral-100 outline-none focus:border-emerald-400/60"
+                          className={`${inputBase} mt-1 w-full px-2 py-2 text-sm text-neutral-100`}
                         />
                       </label>
                       <label className="block">
                         <span className="text-xs text-neutral-500">Amount</span>
-                        <div className="mt-1 flex items-center rounded-md border border-white/10 bg-neutral-950/60 px-2 focus-within:border-emerald-400/60">
+                        <div className={`${inputBase} mt-1 flex items-center px-2`}>
                           <span className="text-neutral-500">$</span>
                           <input
                             type="number"
@@ -1159,14 +1120,14 @@ export default function Home() {
                         <button
                           type="button"
                           onClick={() => toggleAction(goal.id)}
-                          className="rounded-md border border-white/10 px-3 py-2 text-sm text-neutral-300 transition hover:bg-white/5 hover:text-white"
+                          className={secondaryButton}
                         >
                           {isDone ? "Reopen" : "Done"}
                         </button>
                         <button
                           type="button"
                           onClick={() => deleteGoal(goal.id)}
-                          className="rounded-md border border-rose-300/20 px-3 py-2 text-sm text-rose-200 transition hover:bg-rose-300/10"
+                          className={dangerButton}
                         >
                           Delete
                         </button>

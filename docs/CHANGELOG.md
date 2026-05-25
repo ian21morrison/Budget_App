@@ -2,6 +2,9 @@
 
 ## 2026-05-25
 
+- Upgraded the dashboard visual system with a polished financial overview, more
+  consistent section surfaces, refined controls, improved responsive spacing, and
+  clearer hierarchy across budget, accounts, debt, contributions, retirement, and goals.
 - Added JSON backup export and validated import restore for local app data.
 - Centralized local-first persistence defaults and saved-state normalization so
   user-entered budget data survives refreshes with graceful fallbacks.

@@ -1,6 +1,18 @@
 import { type FocusEvent, type ReactNode } from "react";
 import { defaultReturnForAccount } from "@/lib/calculations/returns";
 import { formatCurrency, formatPercent } from "@/lib/formatting";
+import {
+  dangerButton,
+  divider,
+  inputBase,
+  nestedSurface,
+  primaryButton,
+  rowHover,
+  secondaryButton,
+  sectionDescription,
+  sectionTitle,
+  subtleSurface,
+} from "@/components/uiStyles";
 import type {
   Account,
   BudgetTotals,
@@ -65,11 +77,11 @@ export function ContributionsSection({
   selectNumberInput,
 }: ContributionsSectionProps) {
   return (
-    <div className="xl:col-span-2 rounded-lg border border-white/10 bg-neutral-950/45 p-4">
+    <div className={`xl:col-span-2 ${subtleSurface} p-4`}>
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h4 className="text-base font-semibold">Monthly contributions</h4>
-          <p className="mt-1 text-sm text-neutral-500">
+          <h4 className={sectionTitle}>Monthly contributions</h4>
+          <p className={sectionDescription}>
             Contributions that reduce monthly surplus and feed the retirement
             projection.
           </p>
@@ -79,7 +91,7 @@ export function ContributionsSection({
             <button
               type="button"
               onClick={onShowAccountPicker}
-              className="w-fit rounded-md border border-emerald-300/30 px-3 py-2 text-sm font-semibold text-emerald-200 transition hover:bg-emerald-300/10"
+              className={secondaryButton}
             >
               Add existing
             </button>
@@ -87,14 +99,14 @@ export function ContributionsSection({
           <button
             type="button"
             onClick={onAddInvestmentAccount}
-            className="w-fit rounded-md border border-emerald-300/30 px-3 py-2 text-sm font-semibold text-emerald-200 transition hover:bg-emerald-300/10"
+            className={secondaryButton}
           >
             New account
           </button>
           <button
             type="button"
             onClick={onResetInvestmentContributions}
-            className="w-fit rounded-md border border-white/10 px-3 py-2 text-sm text-neutral-300 transition hover:bg-white/5 hover:text-white"
+            className={secondaryButton}
           >
             Reset
           </button>
@@ -102,7 +114,7 @@ export function ContributionsSection({
       </div>
 
       {isAccountPickerOpen ? (
-        <div className="mt-4 flex flex-col gap-2 rounded-lg border border-white/10 bg-neutral-950/60 p-3 sm:flex-row sm:items-center">
+        <div className={`mt-4 flex flex-col gap-2 ${nestedSurface} p-3 sm:flex-row sm:items-center`}>
           <label className="sr-only" htmlFor="contribution-account">
             Existing account
           </label>
@@ -110,7 +122,7 @@ export function ContributionsSection({
             id="contribution-account"
             value={selectedContributionAccountId}
             onChange={(event) => onSelectContributionAccount(event.target.value)}
-            className="min-w-0 flex-1 rounded-md border border-white/10 bg-neutral-950 px-3 py-2 text-sm text-neutral-100 outline-none focus:border-emerald-400/60"
+            className={`${inputBase} min-w-0 flex-1 px-3 py-2 text-sm`}
           >
             <option value="">Select an account</option>
             {availableContributionAccounts.map((account) => (
@@ -123,27 +135,27 @@ export function ContributionsSection({
             type="button"
             onClick={onAddExistingContributionAccount}
             disabled={!selectedContributionAccountId}
-            className="w-fit rounded-md bg-emerald-400 px-3 py-2 text-sm font-semibold text-neutral-950 transition hover:bg-emerald-300 disabled:cursor-not-allowed disabled:opacity-40"
+            className={`${primaryButton} disabled:cursor-not-allowed disabled:opacity-40`}
           >
             Add
           </button>
           <button
             type="button"
             onClick={onCancelAccountPicker}
-            className="w-fit rounded-md border border-white/10 px-3 py-2 text-sm text-neutral-300 transition hover:bg-white/5 hover:text-white"
+            className={secondaryButton}
           >
             Cancel
           </button>
         </div>
       ) : null}
 
-      <div className="mt-4 divide-y divide-white/10">
+      <div className={`mt-4 ${divider}`}>
         {contributionAccounts.length > 0 ? (
           <>
             {contributionAccounts.map((account) => (
               <div
                 key={account.id}
-                className="grid gap-3 py-3 md:grid-cols-[minmax(0,1fr)_170px_110px_110px] md:items-center"
+                className={`grid gap-3 py-3 md:grid-cols-[minmax(0,1fr)_170px_110px_110px] md:items-center ${rowHover}`}
               >
                 <div className="flex min-w-0 items-center gap-3">
                   {renderColorPicker(
@@ -166,7 +178,7 @@ export function ContributionsSection({
                   <span className="text-xs text-neutral-500">
                     Monthly contribution
                   </span>
-                  <div className="mt-1 flex items-center rounded-md border border-white/10 bg-neutral-950/60 px-2 focus-within:border-emerald-400/60">
+                  <div className={`${inputBase} mt-1 flex items-center px-2`}>
                     <span className="text-neutral-500">$</span>
                     <input
                       type="number"
@@ -185,7 +197,7 @@ export function ContributionsSection({
                     />
                   </div>
                 </label>
-                <div className="rounded-md border border-white/10 bg-neutral-950/45 px-2 py-1.5">
+                <div className={`${nestedSurface} px-2 py-1.5`}>
                   <p className="text-xs text-neutral-500">Account return</p>
                   <p className="mt-1 font-semibold text-neutral-100">
                     {formatPercent(
@@ -201,7 +213,7 @@ export function ContributionsSection({
                 <button
                   type="button"
                   onClick={() => onRemoveContributionAccount(account.id)}
-                  className="w-fit rounded-md border border-rose-300/20 px-3 py-2 text-sm text-rose-200 transition hover:bg-rose-300/10 md:justify-self-end"
+                  className={`${dangerButton} md:justify-self-end`}
                 >
                   Remove
                 </button>

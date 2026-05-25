@@ -1,5 +1,18 @@
 import { type FocusEvent } from "react";
 import { formatCurrency, formatPercent } from "@/lib/formatting";
+import {
+  inputBase,
+  metricLabel,
+  metricValue,
+  nestedSurface,
+  progressTrack,
+  secondaryButton,
+  sectionDescription,
+  sectionHeader,
+  statusBadge,
+  subtleSurface,
+  surface,
+} from "@/components/uiStyles";
 import type { BudgetTotals, RetirementPlan, RetirementProjection } from "@/types";
 
 type RetirementProjectionSectionProps = {
@@ -20,14 +33,13 @@ export function RetirementProjectionSection({
   selectNumberInput,
 }: RetirementProjectionSectionProps) {
   return (
-    <section
-      id="retirement"
-      className="mt-4 scroll-mt-24 rounded-lg border border-white/10 bg-white/[0.035]"
-    >
-      <div className="flex flex-col gap-3 border-b border-white/10 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+    <section id="retirement" className={`mt-4 scroll-mt-24 ${surface}`}>
+      <div className={sectionHeader}>
         <div>
-          <h3 className="text-xl font-semibold">Retirement Projection</h3>
-          <p className="mt-1 text-sm text-neutral-500">
+          <h3 className="text-xl font-semibold tracking-tight text-neutral-50">
+            Retirement Projection
+          </h3>
+          <p className={sectionDescription}>
             Track whether contribution accounts can hit the goal portfolio by your
             goal age.
           </p>
@@ -35,7 +47,7 @@ export function RetirementProjectionSection({
         <button
           type="button"
           onClick={onResetRetirementPlan}
-          className="w-fit rounded-md border border-white/10 px-3 py-2 text-sm text-neutral-300 transition hover:bg-white/5 hover:text-white"
+          className={secondaryButton}
         >
           Reset
         </button>
@@ -54,7 +66,7 @@ export function RetirementProjectionSection({
               onChange={(event) =>
                 onUpdateRetirementPlan("currentAge", Number(event.target.value))
               }
-              className="mt-1 w-full rounded-md border border-white/10 bg-neutral-950/60 px-3 py-2 font-semibold text-neutral-100 outline-none focus:border-emerald-400/60"
+              className={`${inputBase} mt-1 w-full px-3 py-2 font-semibold`}
             />
           </label>
           <label className="block">
@@ -68,14 +80,14 @@ export function RetirementProjectionSection({
               onChange={(event) =>
                 onUpdateRetirementPlan("targetAge", Number(event.target.value))
               }
-              className="mt-1 w-full rounded-md border border-white/10 bg-neutral-950/60 px-3 py-2 font-semibold text-neutral-100 outline-none focus:border-emerald-400/60"
+              className={`${inputBase} mt-1 w-full px-3 py-2 font-semibold`}
             />
           </label>
           <label className="block">
             <span className="text-xs text-neutral-500">
               Goal portfolio by goal age
             </span>
-            <div className="mt-1 flex items-center rounded-md border border-white/10 bg-neutral-950/60 px-2 focus-within:border-emerald-400/60">
+            <div className={`${inputBase} mt-1 flex items-center px-2`}>
               <span className="text-neutral-500">$</span>
               <input
                 type="number"
@@ -97,7 +109,7 @@ export function RetirementProjectionSection({
             <span className="text-xs text-neutral-500">
               Default return for new invested accounts
             </span>
-            <div className="mt-1 flex items-center rounded-md border border-white/10 bg-neutral-950/60 px-2 focus-within:border-emerald-400/60">
+            <div className={`${inputBase} mt-1 flex items-center px-2`}>
               <input
                 type="number"
                 onFocus={selectNumberInput}
@@ -115,29 +127,29 @@ export function RetirementProjectionSection({
               <span className="text-neutral-500">%</span>
             </div>
           </label>
-          <div className="rounded-lg border border-white/10 bg-neutral-950/45 px-3 py-2">
-            <p className="text-xs text-neutral-500">Contribution balance</p>
-            <p className="mt-1 text-lg font-semibold text-neutral-100">
+          <div className={`${nestedSurface} px-3 py-2`}>
+            <p className={metricLabel}>Contribution balance</p>
+            <p className={`${metricValue} text-lg`}>
               {formatCurrency(totals.contributionBalance)}
             </p>
           </div>
-          <div className="rounded-lg border border-white/10 bg-neutral-950/45 px-3 py-2">
-            <p className="text-xs text-neutral-500">Monthly contributions</p>
-            <p className="mt-1 text-lg font-semibold text-neutral-100">
+          <div className={`${nestedSurface} px-3 py-2`}>
+            <p className={metricLabel}>Monthly contributions</p>
+            <p className={`${metricValue} text-lg`}>
               {formatCurrency(totals.monthlyInvestment)}
             </p>
           </div>
-          <div className="rounded-lg border border-white/10 bg-neutral-950/45 px-3 py-2">
-            <p className="text-xs text-neutral-500">Overall weighted return</p>
-            <p className="mt-1 text-lg font-semibold text-neutral-100">
+          <div className={`${nestedSurface} px-3 py-2`}>
+            <p className={metricLabel}>Overall weighted return</p>
+            <p className={`${metricValue} text-lg`}>
               {formatPercent(retirementProjection.weightedAnnualReturn)}%
             </p>
           </div>
         </div>
 
-        <aside className="rounded-lg border border-white/10 bg-neutral-950/45 p-4">
+        <aside className={`${subtleSurface} p-4`}>
           <span
-            className={`rounded-full px-2.5 py-1 text-xs font-semibold ${
+            className={`${statusBadge} ${
               retirementProjection.isOnTrack
                 ? "bg-emerald-400/10 text-emerald-300"
                 : "bg-amber-300/10 text-amber-200"
@@ -151,7 +163,7 @@ export function RetirementProjectionSection({
           <p className="mt-1 text-3xl font-semibold tracking-tight">
             {formatCurrency(retirementProjection.balanceAtTargetAge)}
           </p>
-          <div className="mt-4 h-3 rounded-full bg-white/10">
+          <div className={`${progressTrack} mt-4 h-3`}>
             <div
               className={`h-3 rounded-full ${
                 retirementProjection.isOnTrack
@@ -185,7 +197,7 @@ export function RetirementProjectionSection({
               </span>
             </div>
           </div>
-          <div className="mt-4 rounded-lg border border-white/10 bg-neutral-950/50 p-3">
+          <div className={`${nestedSurface} mt-4 p-3`}>
             <p className="text-xs font-medium text-neutral-400">Return mix</p>
             <div className="mt-3 grid gap-2">
               {retirementProjection.returnMix.length > 0 ? (
@@ -217,7 +229,7 @@ export function RetirementProjectionSection({
       </div>
 
       <div className="border-t border-white/10 p-5">
-        <div className="rounded-lg border border-white/10 bg-neutral-950/45 p-4">
+        <div className={`${subtleSurface} p-4`}>
           <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
             <div>
               <h4 className="text-base font-semibold">
@@ -243,7 +255,7 @@ export function RetirementProjectionSection({
           </div>
 
           <div className="mt-4 grid gap-4 xl:grid-cols-[minmax(0,1fr)_260px] xl:items-stretch">
-            <div className="overflow-hidden rounded-lg border border-white/10 bg-neutral-950/60 p-3">
+            <div className={`overflow-hidden ${nestedSurface} p-3`}>
               <div className="aspect-[16/9] w-full">
                 <svg
                   aria-label="Retirement portfolio projection chart"
@@ -364,7 +376,7 @@ export function RetirementProjectionSection({
               </div>
             </div>
 
-            <div className="grid gap-3 rounded-lg border border-white/10 bg-neutral-950/60 p-4 text-sm">
+            <div className={`grid gap-3 ${nestedSurface} p-4 text-sm`}>
               <div>
                 <p className="text-xs text-neutral-500">At goal age</p>
                 <p className="mt-1 text-2xl font-semibold tracking-tight text-neutral-100">
