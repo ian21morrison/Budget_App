@@ -3,6 +3,7 @@ import {
   dangerButton,
   divider,
   inputBase,
+  itemTitleInput,
   primaryButton,
   rowHover,
   secondaryButton,
@@ -47,7 +48,7 @@ export function DebtsSection({
     <article id="debt" className={`scroll-mt-24 ${surface}`}>
       <div className={sectionHeader}>
         <div>
-          <h3 className={sectionTitle}>Debt / Student loans</h3>
+          <h3 className={sectionTitle}>Debt</h3>
           <p className={sectionDescription}>
             Liabilities subtract from net worth and payments reduce surplus.
           </p>
@@ -74,102 +75,114 @@ export function DebtsSection({
         {debts.map((debt) => (
           <div
             key={debt.id}
-            className={`grid gap-3 px-4 py-3 lg:grid-cols-[minmax(0,1fr)_150px_150px_110px_auto] lg:items-center ${rowHover}`}
+            className={`grid gap-3 px-4 py-4 ${rowHover}`}
           >
-            <div className="flex min-w-0 items-center gap-3">
-              {renderColorPicker(
-                `debt-${debt.id}`,
-                debt.accent,
-                debt.name,
-                (color) => onUpdateDebt(debt.id, "accent", color),
-                "size-2.5",
-              )}
-              <div className="grid min-w-0 flex-1 gap-2">
-                <label className="block">
-                  <span className="sr-only">Debt title</span>
-                  <input
-                    type="text"
-                    value={debt.name}
-                    onChange={(event) =>
-                      onUpdateDebt(debt.id, "name", event.target.value)
-                    }
-                    className={`${transparentInput} w-full px-2 py-1 font-medium text-neutral-100 focus:border-rose-300/60`}
-                  />
-                </label>
-                <label className="block">
-                  <span className="sr-only">Debt notes</span>
-                  <input
-                    type="text"
-                    value={debt.lender}
-                    onChange={(event) =>
-                      onUpdateDebt(debt.id, "lender", event.target.value)
-                    }
-                    className={`${transparentInput} w-full px-2 py-1 text-sm text-neutral-500 focus:border-rose-300/60 focus:text-neutral-200`}
-                  />
-                </label>
+            <div className="flex min-w-0 items-start justify-between gap-3">
+              <div className="flex min-w-0 flex-1 items-start gap-3">
+                {renderColorPicker(
+                  `debt-${debt.id}`,
+                  debt.accent,
+                  debt.name,
+                  (color) => onUpdateDebt(debt.id, "accent", color),
+                  "size-2.5",
+                )}
+                <div className="grid min-w-0 flex-1 gap-1">
+                  <label className="block">
+                    <span className="sr-only">Debt title</span>
+                    <input
+                      type="text"
+                      value={debt.name}
+                      onChange={(event) =>
+                        onUpdateDebt(debt.id, "name", event.target.value)
+                      }
+                      className={`${itemTitleInput} w-full px-0 py-0.5 text-lg font-semibold leading-6 focus:border-rose-300/60 focus:ring-rose-300/10`}
+                    />
+                  </label>
+                  <label className="block">
+                    <span className="sr-only">Debt notes</span>
+                    <input
+                      type="text"
+                      value={debt.lender}
+                      onChange={(event) =>
+                        onUpdateDebt(debt.id, "lender", event.target.value)
+                      }
+                      className={`${transparentInput} w-full px-0 py-0.5 text-sm text-neutral-500 focus:border-rose-300/60 focus:text-neutral-200`}
+                    />
+                  </label>
+                </div>
               </div>
+              <button
+                type="button"
+                onClick={() => onDeleteDebt(debt.id)}
+                className={`${dangerButton} shrink-0`}
+              >
+                Delete
+              </button>
             </div>
 
-            <label className="block text-sm">
-              <span className="text-xs text-neutral-500">Balance</span>
-              <div className={`${inputBase} mt-1 flex items-center px-2 focus-within:border-rose-300/60`}>
-                <span className="text-neutral-500">$</span>
-                <input
-                  type="number"
-                  onFocus={selectNumberInput}
-                  min="0"
-                  step="100"
-                  value={debt.balance}
-                  onChange={(event) =>
-                    onUpdateDebt(debt.id, "balance", Number(event.target.value))
-                  }
-                  className="min-w-0 flex-1 bg-transparent px-1 py-2 font-semibold text-neutral-100 outline-none"
-                />
-              </div>
-            </label>
+            <div className="grid gap-3 sm:grid-cols-3">
+              <label className="block text-sm">
+                <span className="text-xs text-neutral-500">Balance</span>
+                <div className={`${inputBase} mt-1 flex items-center px-2 focus-within:border-rose-300/60`}>
+                  <span className="text-neutral-500">$</span>
+                  <input
+                    type="number"
+                    onFocus={selectNumberInput}
+                    min="0"
+                    step="100"
+                    value={debt.balance}
+                    onChange={(event) =>
+                      onUpdateDebt(
+                        debt.id,
+                        "balance",
+                        Number(event.target.value),
+                      )
+                    }
+                    className="min-w-0 flex-1 bg-transparent px-1 py-2 font-semibold text-neutral-100 outline-none"
+                  />
+                </div>
+              </label>
 
-            <label className="block text-sm">
-              <span className="text-xs text-neutral-500">Payment</span>
-              <div className={`${inputBase} mt-1 flex items-center px-2 focus-within:border-rose-300/60`}>
-                <span className="text-neutral-500">$</span>
-                <input
-                  type="number"
-                  onFocus={selectNumberInput}
-                  min="0"
-                  step="25"
-                  value={debt.payment}
-                  onChange={(event) =>
-                    onUpdateDebt(debt.id, "payment", Number(event.target.value))
-                  }
-                  className="min-w-0 flex-1 bg-transparent px-1 py-2 font-semibold text-neutral-100 outline-none"
-                />
-              </div>
-            </label>
+              <label className="block text-sm">
+                <span className="text-xs text-neutral-500">Payment</span>
+                <div className={`${inputBase} mt-1 flex items-center px-2 focus-within:border-rose-300/60`}>
+                  <span className="text-neutral-500">$</span>
+                  <input
+                    type="number"
+                    onFocus={selectNumberInput}
+                    min="0"
+                    step="25"
+                    value={debt.payment}
+                    onChange={(event) =>
+                      onUpdateDebt(
+                        debt.id,
+                        "payment",
+                        Number(event.target.value),
+                      )
+                    }
+                    className="min-w-0 flex-1 bg-transparent px-1 py-2 font-semibold text-neutral-100 outline-none"
+                  />
+                </div>
+              </label>
 
-            <label className="block text-sm">
-              <span className="text-xs text-neutral-500">APR</span>
-              <div className={`${inputBase} mt-1 flex items-center px-2 focus-within:border-rose-300/60`}>
-                <input
-                  type="number"
-                  onFocus={selectNumberInput}
-                  min="0"
-                  step="0.1"
-                  value={debt.rate}
-                  onChange={(event) =>
-                    onUpdateDebt(debt.id, "rate", Number(event.target.value))
-                  }
-                  className="min-w-0 flex-1 bg-transparent px-1 py-2 font-semibold text-neutral-100 outline-none"
-                />
-                <span className="text-neutral-500">%</span>
-              </div>
-            </label>
-            <button
-              type="button"
-              onClick={() => onDeleteDebt(debt.id)}
-              className={dangerButton}
-            >
-              Delete
-            </button>
+              <label className="block text-sm">
+                <span className="text-xs text-neutral-500">APR</span>
+                <div className={`${inputBase} mt-1 flex items-center px-2 focus-within:border-rose-300/60`}>
+                  <input
+                    type="number"
+                    onFocus={selectNumberInput}
+                    min="0"
+                    step="0.1"
+                    value={debt.rate}
+                    onChange={(event) =>
+                      onUpdateDebt(debt.id, "rate", Number(event.target.value))
+                    }
+                    className="min-w-0 flex-1 bg-transparent px-1 py-2 font-semibold text-neutral-100 outline-none"
+                  />
+                  <span className="text-neutral-500">%</span>
+                </div>
+              </label>
+            </div>
           </div>
         ))}
       </div>

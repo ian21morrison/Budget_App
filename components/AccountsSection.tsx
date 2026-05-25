@@ -4,6 +4,7 @@ import {
   dangerButton,
   divider,
   inputBase,
+  itemTitleInput,
   primaryButton,
   rowHover,
   secondaryButton,
@@ -61,7 +62,7 @@ export function AccountsSection({
         <div>
           <h3 className={sectionTitle}>Accounts</h3>
           <p className={sectionDescription}>
-            Current balances used for net worth.
+            Current balances and account types used for net worth.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -86,10 +87,10 @@ export function AccountsSection({
         {accounts.map((account) => (
           <div
             key={account.id}
-            className={`grid gap-3 px-4 py-3 md:grid-cols-[minmax(0,1fr)_160px_130px_140px_auto] md:items-center ${rowHover}`}
+            className={`grid gap-3 px-4 py-4 ${rowHover}`}
           >
-            <div className="min-w-0">
-              <div className="flex items-center gap-3">
+            <div className="flex min-w-0 items-start justify-between gap-3">
+              <div className="flex min-w-0 flex-1 items-start gap-3">
                 {renderColorPicker(
                   `account-${account.id}`,
                   account.accent,
@@ -97,7 +98,7 @@ export function AccountsSection({
                   (color) => onUpdateAccount(account.id, "accent", color),
                   "size-2.5",
                 )}
-                <div className="grid min-w-0 flex-1 gap-2">
+                <div className="grid min-w-0 flex-1 gap-1">
                   <label className="block">
                     <span className="sr-only">Account title</span>
                     <input
@@ -106,7 +107,7 @@ export function AccountsSection({
                       onChange={(event) =>
                         onUpdateAccount(account.id, "name", event.target.value)
                       }
-                      className={`${transparentInput} w-full px-2 py-1 font-medium text-neutral-100`}
+                      className={`${itemTitleInput} w-full px-0 py-0.5 text-lg font-semibold leading-6`}
                     />
                   </label>
                   <label className="block">
@@ -126,80 +127,84 @@ export function AccountsSection({
                   </label>
                 </div>
               </div>
+              <button
+                type="button"
+                onClick={() => onDeleteAccount(account.id)}
+                className={`${dangerButton} shrink-0`}
+              >
+                Delete
+              </button>
             </div>
 
-            <label className="block text-sm">
-              <span className="sr-only">{account.name} balance</span>
-              <div className={`${inputBase} flex items-center px-2`}>
-                <span className="text-neutral-500">$</span>
-                <input
-                  type="number"
-                  onFocus={selectNumberInput}
-                  min="0"
-                  step="100"
-                  value={account.balance}
+            <div className="grid gap-3 sm:grid-cols-3">
+              <label className="block text-sm">
+                <span className="text-xs text-neutral-500">Balance</span>
+                <div className={`${inputBase} mt-1 flex items-center px-2`}>
+                  <span className="text-neutral-500">$</span>
+                  <input
+                    type="number"
+                    onFocus={selectNumberInput}
+                    min="0"
+                    step="100"
+                    value={account.balance}
+                    onChange={(event) =>
+                      onUpdateAccount(
+                        account.id,
+                        "balance",
+                        Number(event.target.value),
+                      )
+                    }
+                    aria-label={`${account.name} balance`}
+                    className="min-w-0 flex-1 bg-transparent px-1 py-2 font-semibold text-neutral-100 outline-none"
+                  />
+                </div>
+              </label>
+              <label className="block text-sm">
+                <span className="text-xs text-neutral-500">Type</span>
+                <select
+                  value={account.type}
                   onChange={(event) =>
                     onUpdateAccount(
                       account.id,
-                      "balance",
-                      Number(event.target.value),
+                      "type",
+                      event.target.value as AccountType,
                     )
                   }
-                  className="min-w-0 flex-1 bg-transparent px-1 py-2 font-semibold text-neutral-100 outline-none"
-                />
-              </div>
-            </label>
-            <label className="block text-sm">
-              <span className="text-xs text-neutral-500">Expected return</span>
-              <div className={`${inputBase} flex items-center px-2`}>
-                <input
-                  type="number"
-                  onFocus={selectNumberInput}
-                  min="0"
-                  step="0.25"
-                  value={
-                    contributionReturns[account.id] ??
-                    defaultReturnForAccount(
-                      account,
-                      retirementPlan.annualReturn,
-                    )
-                  }
-                  onChange={(event) =>
-                    onUpdateContributionReturn(
-                      account.id,
-                      Number(event.target.value),
-                    )
-                  }
-                  aria-label={`${account.name} expected return`}
-                  className="min-w-0 flex-1 bg-transparent px-1 py-2 font-semibold text-neutral-100 outline-none"
-                />
-                <span className="text-neutral-500">%</span>
-              </div>
-            </label>
-            <label className="block text-sm">
-              <span className="sr-only">{account.name} account type</span>
-              <select
-                value={account.type}
-                onChange={(event) =>
-                  onUpdateAccount(
-                    account.id,
-                    "type",
-                    event.target.value as AccountType,
-                  )
-                }
-                className={`${inputBase} w-full px-2 py-2 font-medium`}
-              >
-                <option value="cash">Cash</option>
-                <option value="invested">Invested</option>
-              </select>
-            </label>
-            <button
-              type="button"
-              onClick={() => onDeleteAccount(account.id)}
-              className={dangerButton}
-            >
-              Delete
-            </button>
+                  aria-label={`${account.name} account type`}
+                  className={`${inputBase} mt-1 w-full px-2 py-2 font-medium`}
+                >
+                  <option value="cash">Cash</option>
+                  <option value="invested">Invested</option>
+                </select>
+              </label>
+              <label className="block text-sm">
+                <span className="text-xs text-neutral-500">Expected return</span>
+                <div className={`${inputBase} mt-1 flex items-center px-2`}>
+                  <input
+                    type="number"
+                    onFocus={selectNumberInput}
+                    min="0"
+                    step="0.25"
+                    value={
+                      contributionReturns[account.id] ??
+                      defaultReturnForAccount(
+                        account,
+                        retirementPlan.annualReturn,
+                      )
+                    }
+                    onChange={(event) =>
+                      onUpdateContributionReturn(
+                        account.id,
+                        Number(event.target.value),
+                      )
+                    }
+                    aria-label={`${account.name} expected return`}
+                    className="min-w-0 flex-1 bg-transparent px-1 py-2 font-semibold text-neutral-100 outline-none"
+                  />
+                  <span className="text-neutral-500">%</span>
+                </div>
+              </label>
+            </div>
           </div>
         ))}
       </div>

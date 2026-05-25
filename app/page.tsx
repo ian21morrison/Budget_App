@@ -738,7 +738,7 @@ export default function Home() {
   return (
     <main className="min-h-screen bg-neutral-950 text-neutral-100">
       <div className="flex min-h-screen bg-[radial-gradient(circle_at_top_left,rgba(16,185,129,0.08),transparent_34%),linear-gradient(180deg,#0b0b0e_0%,#09090b_42%,#0b0b0d_100%)]">
-        <aside className="hidden w-72 shrink-0 border-r border-white/10 bg-neutral-950/80 px-6 py-6 backdrop-blur-xl lg:flex lg:flex-col">
+        <aside className="sticky top-0 hidden h-screen w-72 shrink-0 overflow-y-auto border-r border-white/10 bg-neutral-950/80 px-6 py-6 backdrop-blur-xl lg:flex lg:flex-col">
           <div className="mb-5">
             <div className="flex items-center gap-3">
               <div className="grid size-10 place-items-center rounded-lg bg-emerald-400 text-lg font-black text-neutral-950">
@@ -939,6 +939,7 @@ export default function Home() {
                       setShowContributionAccountPicker(true)
                     }
                     onUpdateAccount={updateAccount}
+                    onUpdateContributionReturn={updateContributionReturn}
                     onUpdateInvestmentContribution={updateInvestmentContribution}
                     renderColorPicker={renderColorPicker}
                     selectNumberInput={selectNumberInput}
@@ -946,7 +947,7 @@ export default function Home() {
                 }
               />
 
-              <div className="grid items-start gap-4 xl:grid-cols-2">
+              <div className="grid items-start gap-4">
                 <AccountsSection
                   accounts={accounts}
                   contributionReturns={contributionReturns}

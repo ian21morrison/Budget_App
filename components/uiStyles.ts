@@ -34,6 +34,9 @@ export const inputBase =
 export const transparentInput =
   "rounded-md border border-transparent bg-transparent outline-none transition hover:border-white/10 hover:bg-white/[0.04] focus:border-emerald-300/60 focus:bg-neutral-950/70 focus:ring-2 focus:ring-emerald-300/10";
 
+export const itemTitleInput =
+  "rounded-md border border-transparent bg-transparent text-neutral-50 outline-none transition placeholder:text-neutral-500 hover:border-white/10 hover:bg-white/[0.04] focus:border-emerald-300/60 focus:bg-neutral-950/70 focus:ring-2 focus:ring-emerald-300/10";
+
 export const rowHover = "transition hover:bg-white/[0.035]";
 
 export const divider = "divide-y divide-white/10";

@@ -43,6 +43,7 @@ type ContributionsSectionProps = {
     field: "name" | "institution" | "balance" | "type" | "accent",
     value: string | number,
   ) => void;
+  onUpdateContributionReturn: (accountId: string, value: number) => void;
   onUpdateInvestmentContribution: (accountId: string, value: number) => void;
   renderColorPicker: (
     pickerId: string,
@@ -72,6 +73,7 @@ export function ContributionsSection({
   onSelectContributionAccount,
   onShowAccountPicker,
   onUpdateAccount,
+  onUpdateContributionReturn,
   onUpdateInvestmentContribution,
   renderColorPicker,
   selectNumberInput,
@@ -155,7 +157,7 @@ export function ContributionsSection({
             {contributionAccounts.map((account) => (
               <div
                 key={account.id}
-                className={`grid gap-3 py-3 md:grid-cols-[minmax(0,1fr)_170px_110px_110px] md:items-center ${rowHover}`}
+                className={`grid gap-3 py-3 md:grid-cols-[minmax(0,1fr)_170px_120px_110px] md:items-center ${rowHover}`}
               >
                 <div className="flex min-w-0 items-center gap-3">
                   {renderColorPicker(
@@ -197,19 +199,35 @@ export function ContributionsSection({
                     />
                   </div>
                 </label>
-                <div className={`${nestedSurface} px-2 py-1.5`}>
-                  <p className="text-xs text-neutral-500">Account return</p>
-                  <p className="mt-1 font-semibold text-neutral-100">
-                    {formatPercent(
-                      contributionReturns[account.id] ??
+                <label className="block">
+                  <span className="text-xs text-neutral-500">
+                    Expected return
+                  </span>
+                  <div className={`${inputBase} mt-1 flex items-center px-2`}>
+                    <input
+                      type="number"
+                      onFocus={selectNumberInput}
+                      min="0"
+                      step="0.25"
+                      value={
+                        contributionReturns[account.id] ??
                         defaultReturnForAccount(
                           account,
                           retirementPlan.annualReturn,
-                        ),
-                    )}
-                    %
-                  </p>
-                </div>
+                        )
+                      }
+                      onChange={(event) =>
+                        onUpdateContributionReturn(
+                          account.id,
+                          Number(event.target.value),
+                        )
+                      }
+                      aria-label={`${account.name} expected return`}
+                      className="min-w-0 flex-1 bg-transparent px-1 py-2 font-semibold text-neutral-100 outline-none"
+                    />
+                    <span className="text-neutral-500">%</span>
+                  </div>
+                </label>
                 <button
                   type="button"
                   onClick={() => onRemoveContributionAccount(account.id)}

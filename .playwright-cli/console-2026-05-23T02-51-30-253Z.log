@@ -1175,3 +1175,23 @@ Check the render method of `Home`.  @ http://127.0.0.1:3000/_next/static/chunks/
 [221651910ms] [LOG] [Fast Refresh] done in 86ms @ http://127.0.0.1:3000/_next/static/chunks/node_modules_next_dist_115brz8._.js:2477
 [221676373ms] [LOG] [Fast Refresh] rebuilding @ http://127.0.0.1:3000/_next/static/chunks/node_modules_next_dist_115brz8._.js:2477
 [221676437ms] [LOG] [Fast Refresh] done in 171ms @ http://127.0.0.1:3000/_next/static/chunks/node_modules_next_dist_115brz8._.js:2477
+[222182822ms] [LOG] [Fast Refresh] rebuilding @ http://127.0.0.1:3000/_next/static/chunks/node_modules_next_dist_115brz8._.js:2477
+[222182999ms] [LOG] [Fast Refresh] done in 99ms @ http://127.0.0.1:3000/_next/static/chunks/node_modules_next_dist_115brz8._.js:2477
+[222187690ms] [LOG] [Fast Refresh] rebuilding @ http://127.0.0.1:3000/_next/static/chunks/node_modules_next_dist_115brz8._.js:2477
+[222187712ms] [LOG] [Fast Refresh] done in 77ms @ http://127.0.0.1:3000/_next/static/chunks/node_modules_next_dist_115brz8._.js:2477
+[222187815ms] [LOG] [Fast Refresh] rebuilding @ http://127.0.0.1:3000/_next/static/chunks/node_modules_next_dist_115brz8._.js:2477
+[222187875ms] [LOG] [Fast Refresh] done in 163ms @ http://127.0.0.1:3000/_next/static/chunks/node_modules_next_dist_115brz8._.js:2477
+[222193770ms] [LOG] [Fast Refresh] rebuilding @ http://127.0.0.1:3000/_next/static/chunks/node_modules_next_dist_115brz8._.js:2477
+[222193947ms] [LOG] [Fast Refresh] done in 112ms @ http://127.0.0.1:3000/_next/static/chunks/node_modules_next_dist_115brz8._.js:2477
+[222383951ms] [LOG] [Fast Refresh] rebuilding @ http://127.0.0.1:3000/_next/static/chunks/node_modules_next_dist_115brz8._.js:2477
+[222384018ms] [LOG] [Fast Refresh] done in 68ms @ http://127.0.0.1:3000/_next/static/chunks/node_modules_next_dist_115brz8._.js:2477
+[222384124ms] [LOG] [Fast Refresh] rebuilding @ http://127.0.0.1:3000/_next/static/chunks/node_modules_next_dist_115brz8._.js:2477
+[222384130ms] [LOG] [Fast Refresh] done in 111ms @ http://127.0.0.1:3000/_next/static/chunks/node_modules_next_dist_115brz8._.js:2477
+[222402685ms] [LOG] [Fast Refresh] rebuilding @ http://127.0.0.1:3000/_next/static/chunks/node_modules_next_dist_115brz8._.js:2477
+[222402940ms] [LOG] [Fast Refresh] done in 338ms @ http://127.0.0.1:3000/_next/static/chunks/node_modules_next_dist_115brz8._.js:2477
+[222419751ms] [LOG] [Fast Refresh] rebuilding @ http://127.0.0.1:3000/_next/static/chunks/node_modules_next_dist_115brz8._.js:2477
+[222419786ms] [LOG] [Fast Refresh] done in 102ms @ http://127.0.0.1:3000/_next/static/chunks/node_modules_next_dist_115brz8._.js:2477
+[222419888ms] [LOG] [Fast Refresh] rebuilding @ http://127.0.0.1:3000/_next/static/chunks/node_modules_next_dist_115brz8._.js:2477
+[222419978ms] [LOG] [Fast Refresh] done in 191ms @ http://127.0.0.1:3000/_next/static/chunks/node_modules_next_dist_115brz8._.js:2477
+[222428372ms] [LOG] [Fast Refresh] rebuilding @ http://127.0.0.1:3000/_next/static/chunks/node_modules_next_dist_115brz8._.js:2477
+[222428610ms] [LOG] [Fast Refresh] done in 92ms @ http://127.0.0.1:3000/_next/static/chunks/node_modules_next_dist_115brz8._.js:2477
