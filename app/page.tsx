@@ -655,6 +655,27 @@ export default function Home() {
     [accounts, investmentContributions],
   );
 
+  const monthlyContributionWeightedReturn = useMemo(() => {
+    if (totals.monthlyInvestment <= 0) {
+      return 0;
+    }
+
+    return contributionAccounts.reduce((total, account) => {
+      const monthlyContribution = investmentContributions[account.id] ?? 0;
+      const accountReturn =
+        contributionReturns[account.id] ??
+        defaultReturnForAccount(account, retirementPlan.annualReturn);
+
+      return total + (monthlyContribution / totals.monthlyInvestment) * accountReturn;
+    }, 0);
+  }, [
+    contributionAccounts,
+    contributionReturns,
+    investmentContributions,
+    retirementPlan.annualReturn,
+    totals.monthlyInvestment,
+  ]);
+
   const incomeUsedPercent = Math.round(
     ((totals.monthlyBudget + totals.debtPayments + totals.monthlyInvestment) /
       Math.max(monthlyIncome, 1)) *
@@ -1789,76 +1810,104 @@ export default function Home() {
 
                     <div className="mt-4 divide-y divide-white/10">
                       {contributionAccounts.length > 0 ? (
-                        contributionAccounts.map((account) => (
-                          <div
-                            key={account.id}
-                            className="grid gap-3 py-3 md:grid-cols-[minmax(0,1fr)_170px_110px_110px] md:items-center"
-                          >
-                            <div className="flex min-w-0 items-center gap-3">
-                              {renderColorPicker(
-                                `investment-${account.id}`,
-                                account.accent,
-                                account.name,
-                                (color) =>
-                                  updateAccount(account.id, "accent", color),
-                                "size-2.5",
-                              )}
-                              <div className="min-w-0">
-                                <p className="truncate font-medium text-neutral-100">
-                                  {account.name}
+                        <>
+                          {contributionAccounts.map((account) => (
+                            <div
+                              key={account.id}
+                              className="grid gap-3 py-3 md:grid-cols-[minmax(0,1fr)_170px_110px_110px] md:items-center"
+                            >
+                              <div className="flex min-w-0 items-center gap-3">
+                                {renderColorPicker(
+                                  `investment-${account.id}`,
+                                  account.accent,
+                                  account.name,
+                                  (color) =>
+                                    updateAccount(account.id, "accent", color),
+                                  "size-2.5",
+                                )}
+                                <div className="min-w-0">
+                                  <p className="truncate font-medium text-neutral-100">
+                                    {account.name}
+                                  </p>
+                                  <p className="truncate text-sm text-neutral-500">
+                                    {account.institution} / {account.type}
+                                  </p>
+                                </div>
+                              </div>
+                              <label className="block">
+                                <span className="text-xs text-neutral-500">
+                                  Monthly contribution
+                                </span>
+                                <div className="mt-1 flex items-center rounded-md border border-white/10 bg-neutral-950/60 px-2 focus-within:border-emerald-400/60">
+                                  <span className="text-neutral-500">$</span>
+                                  <input
+                                    type="number"
+                                    onFocus={selectNumberInput}
+                                    min="0"
+                                    step="25"
+                                    value={investmentContributions[account.id] ?? 0}
+                                    onChange={(event) =>
+                                      updateInvestmentContribution(
+                                        account.id,
+                                        Number(event.target.value),
+                                      )
+                                    }
+                                    aria-label={`${account.name} monthly contribution`}
+                                    className="min-w-0 flex-1 bg-transparent px-1 py-2 font-semibold text-neutral-100 outline-none"
+                                  />
+                                </div>
+                              </label>
+                              <div className="rounded-md border border-white/10 bg-neutral-950/45 px-2 py-1.5">
+                                <p className="text-xs text-neutral-500">
+                                  Account return
                                 </p>
-                                <p className="truncate text-sm text-neutral-500">
-                                  {account.institution} / {account.type}
+                                <p className="mt-1 font-semibold text-neutral-100">
+                                  {formatPercent(
+                                    contributionReturns[account.id] ??
+                                      defaultReturnForAccount(
+                                        account,
+                                        retirementPlan.annualReturn,
+                                      ),
+                                  )}
+                                  %
                                 </p>
                               </div>
+                              <button
+                                type="button"
+                                onClick={() => removeContributionAccount(account.id)}
+                                className="w-fit rounded-md border border-rose-300/20 px-3 py-2 text-sm text-rose-200 transition hover:bg-rose-300/10 md:justify-self-end"
+                              >
+                                Remove
+                              </button>
                             </div>
-                            <label className="block">
-                              <span className="text-xs text-neutral-500">
+                          ))}
+                          <div className="grid gap-3 py-3 md:grid-cols-[minmax(0,1fr)_170px_110px_110px] md:items-center">
+                            <div className="min-w-0">
+                              <p className="font-semibold text-neutral-100">
+                                Total
+                              </p>
+                              <p className="text-sm text-neutral-500">
+                                Monthly contribution summary
+                              </p>
+                            </div>
+                            <div className="rounded-md border border-emerald-300/20 bg-emerald-300/10 px-2 py-1.5">
+                              <p className="text-xs text-emerald-200">
                                 Monthly contribution
-                              </span>
-                              <div className="mt-1 flex items-center rounded-md border border-white/10 bg-neutral-950/60 px-2 focus-within:border-emerald-400/60">
-                                <span className="text-neutral-500">$</span>
-                                <input
-                                  type="number"
-                                  onFocus={selectNumberInput}
-                                  min="0"
-                                  step="25"
-                                  value={investmentContributions[account.id] ?? 0}
-                                  onChange={(event) =>
-                                    updateInvestmentContribution(
-                                      account.id,
-                                      Number(event.target.value),
-                                    )
-                                  }
-                                  aria-label={`${account.name} monthly contribution`}
-                                  className="min-w-0 flex-1 bg-transparent px-1 py-2 font-semibold text-neutral-100 outline-none"
-                                />
-                              </div>
-                            </label>
-                            <div className="rounded-md border border-white/10 bg-neutral-950/45 px-2 py-1.5">
-                              <p className="text-xs text-neutral-500">
-                                Account return
                               </p>
                               <p className="mt-1 font-semibold text-neutral-100">
-                                {formatPercent(
-                                  contributionReturns[account.id] ??
-                                    defaultReturnForAccount(
-                                      account,
-                                      retirementPlan.annualReturn,
-                                    ),
-                                )}
-                                %
+                                {formatCurrency(totals.monthlyInvestment)}
                               </p>
                             </div>
-                            <button
-                              type="button"
-                              onClick={() => removeContributionAccount(account.id)}
-                              className="w-fit rounded-md border border-rose-300/20 px-3 py-2 text-sm text-rose-200 transition hover:bg-rose-300/10 md:justify-self-end"
-                            >
-                              Remove
-                            </button>
+                            <div className="rounded-md border border-emerald-300/20 bg-emerald-300/10 px-2 py-1.5">
+                              <p className="text-xs text-emerald-200">
+                                Weighted return
+                              </p>
+                              <p className="mt-1 font-semibold text-neutral-100">
+                                {formatPercent(monthlyContributionWeightedReturn)}%
+                              </p>
+                            </div>
                           </div>
-                        ))
+                        </>
                       ) : (
                         <div className="py-4 text-sm text-neutral-500">
                           Add an existing account or create a new account to start
@@ -2306,7 +2355,9 @@ export default function Home() {
                     </p>
                   </div>
                   <div className="rounded-lg border border-white/10 bg-neutral-950/45 px-3 py-2">
-                    <p className="text-xs text-neutral-500">Weighted return</p>
+                    <p className="text-xs text-neutral-500">
+                      Overall weighted return
+                    </p>
                     <p className="mt-1 text-lg font-semibold text-neutral-100">
                       {formatPercent(retirementProjection.weightedAnnualReturn)}%
                     </p>
@@ -2582,7 +2633,9 @@ export default function Home() {
                           </span>
                         </div>
                         <div className="flex items-center justify-between gap-3">
-                          <span className="text-neutral-500">Weighted return</span>
+                          <span className="text-neutral-500">
+                            Overall weighted return
+                          </span>
                           <span className="font-semibold text-neutral-100">
                             {formatPercent(retirementProjection.weightedAnnualReturn)}%
                           </span>
