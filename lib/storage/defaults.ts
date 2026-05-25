@@ -170,6 +170,7 @@ export const DEFAULT_MONTHLY_INVESTING = Object.values(
 export const STORAGE_KEY = "ian-capital-budget-state-v1";
 export const DEFAULT_BRAND_NAME = "Ian Capital";
 export const DEFAULT_DASHBOARD_TITLE = "Interactive budgeting tool";
+export const DEFAULT_MONTHLY_INCOME = 6150;
 
 export const colorOptions = [
   "bg-emerald-400",

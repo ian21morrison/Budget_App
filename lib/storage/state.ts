@@ -2,6 +2,7 @@ import { defaultReturnForAccount } from "@/lib/calculations/returns";
 import {
   DEFAULT_BRAND_NAME,
   DEFAULT_DASHBOARD_TITLE,
+  DEFAULT_MONTHLY_INCOME,
   DEFAULT_MONTHLY_INVESTING,
   STORAGE_KEY,
   accountSeed,
@@ -23,6 +24,32 @@ import type {
   SavedBudgetState,
 } from "@/types";
 
+const BACKUP_APP_ID = "ian-capital-budget-app";
+const BACKUP_VERSION = 1;
+const BACKUP_STATE_KEYS = [
+  "accounts",
+  "budgets",
+  "debts",
+  "goals",
+  "monthlyIncome",
+  "retirementPlan",
+  "investmentContributions",
+  "contributionReturns",
+  "completedActions",
+  "brandName",
+  "dashboardTitle",
+];
+
+type ImportBudgetBackupResult =
+  | {
+      ok: true;
+      state: SavedBudgetState;
+    }
+  | {
+      ok: false;
+      error: string;
+    };
+
 const slugFromText = (prefix: string, text: string) =>
   `${prefix}-${text
     .toLowerCase()
@@ -31,6 +58,9 @@ const slugFromText = (prefix: string, text: string) =>
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === "object" && value !== null;
+
+const hasBudgetStateShape = (value: Record<string, unknown>) =>
+  BACKUP_STATE_KEYS.some((key) => key in value);
 
 const textValue = (value: unknown, fallback: string) =>
   typeof value === "string" ? value : fallback;
@@ -213,6 +243,66 @@ export const normalizeContributionReturns = (
     return next;
   }, {});
 
+export const createDefaultBudgetState = (): SavedBudgetState => ({
+  brandName: DEFAULT_BRAND_NAME,
+  dashboardTitle: DEFAULT_DASHBOARD_TITLE,
+  accounts: accountSeed.map((account) => ({ ...account })),
+  budgets: budgetSeed.map((budget) => ({ ...budget })),
+  debts: debtSeed.map((debt) => ({ ...debt })),
+  goals: actionSeed.map((goal) => ({ ...goal })),
+  monthlyIncome: DEFAULT_MONTHLY_INCOME,
+  retirementPlan: { ...retirementSeed },
+  investmentContributions: { ...investmentContributionSeed },
+  contributionReturns: normalizeContributionReturns(
+    undefined,
+    accountSeed,
+    retirementSeed,
+  ),
+  completedActions: [],
+});
+
+export const normalizeSavedBudgetState = (
+  savedState: unknown,
+): SavedBudgetState | null => {
+  if (!isRecord(savedState)) {
+    return null;
+  }
+
+  const parsedState = savedState as Partial<SavedBudgetState>;
+  const accounts = normalizeAccounts(parsedState.accounts);
+  const retirementPlan = normalizeRetirementPlan(parsedState.retirementPlan);
+  const investmentContributions = normalizeInvestmentContributions(
+    parsedState.investmentContributions,
+    accounts,
+    parsedState.retirementPlan,
+  );
+
+  return {
+    brandName: textValue(parsedState.brandName, DEFAULT_BRAND_NAME),
+    dashboardTitle: textValue(parsedState.dashboardTitle, DEFAULT_DASHBOARD_TITLE),
+    accounts,
+    budgets: normalizeBudgets(parsedState.budgets),
+    debts: normalizeDebts(parsedState.debts),
+    goals: normalizeGoals(parsedState.goals),
+    monthlyIncome:
+      typeof parsedState.monthlyIncome === "number"
+        ? parsedState.monthlyIncome
+        : DEFAULT_MONTHLY_INCOME,
+    retirementPlan,
+    investmentContributions,
+    contributionReturns: normalizeContributionReturns(
+      parsedState.contributionReturns,
+      accounts,
+      retirementPlan,
+    ),
+    completedActions: Array.isArray(parsedState.completedActions)
+      ? parsedState.completedActions.filter(
+          (action): action is string => typeof action === "string",
+        )
+      : [],
+  };
+};
+
 export const loadSavedBudgetState = (): SavedBudgetState | null => {
   try {
     const rawState = window.localStorage.getItem(STORAGE_KEY);
@@ -221,43 +311,7 @@ export const loadSavedBudgetState = (): SavedBudgetState | null => {
       return null;
     }
 
-    const parsedState = JSON.parse(rawState) as Partial<SavedBudgetState>;
-
-    const accounts = normalizeAccounts(parsedState.accounts);
-    const retirementPlan = normalizeRetirementPlan(parsedState.retirementPlan);
-    const investmentContributions = normalizeInvestmentContributions(
-      parsedState.investmentContributions,
-      accounts,
-      parsedState.retirementPlan,
-    );
-
-    return {
-      brandName: textValue(parsedState.brandName, DEFAULT_BRAND_NAME),
-      dashboardTitle: textValue(
-        parsedState.dashboardTitle,
-        DEFAULT_DASHBOARD_TITLE,
-      ),
-      accounts,
-      budgets: normalizeBudgets(parsedState.budgets),
-      debts: normalizeDebts(parsedState.debts),
-      goals: normalizeGoals(parsedState.goals),
-      monthlyIncome:
-        typeof parsedState.monthlyIncome === "number"
-          ? parsedState.monthlyIncome
-          : 6150,
-      retirementPlan,
-      investmentContributions,
-      contributionReturns: normalizeContributionReturns(
-        parsedState.contributionReturns,
-        accounts,
-        retirementPlan,
-      ),
-      completedActions: Array.isArray(parsedState.completedActions)
-        ? parsedState.completedActions.filter(
-            (action): action is string => typeof action === "string",
-          )
-        : [],
-    };
+    return normalizeSavedBudgetState(JSON.parse(rawState));
   } catch {
     return null;
   }
@@ -268,5 +322,69 @@ export const persistBudgetState = (state: SavedBudgetState) => {
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
   } catch {
     // Local storage can be unavailable in private windows or restricted contexts.
+  }
+};
+
+export const createBudgetBackupJson = (state: SavedBudgetState) =>
+  JSON.stringify(
+    {
+      app: BACKUP_APP_ID,
+      version: BACKUP_VERSION,
+      exportedAt: new Date().toISOString(),
+      state,
+    },
+    null,
+    2,
+  );
+
+export const createBudgetBackupFileName = (date = new Date()) => {
+  const stamp = date.toISOString().slice(0, 10);
+
+  return `budget-app-backup-${stamp}.json`;
+};
+
+export const parseBudgetBackupJson = (
+  backupJson: string,
+): ImportBudgetBackupResult => {
+  try {
+    const parsedBackup = JSON.parse(backupJson) as unknown;
+
+    if (!isRecord(parsedBackup)) {
+      return {
+        ok: false,
+        error: "Backup must be a JSON object.",
+      };
+    }
+
+    const candidateState =
+      isRecord(parsedBackup.state) && parsedBackup.app === BACKUP_APP_ID
+        ? parsedBackup.state
+        : parsedBackup;
+
+    if (!isRecord(candidateState) || !hasBudgetStateShape(candidateState)) {
+      return {
+        ok: false,
+        error: "Backup does not look like Budget App data.",
+      };
+    }
+
+    const state = normalizeSavedBudgetState(candidateState);
+
+    if (!state) {
+      return {
+        ok: false,
+        error: "Backup data could not be normalized.",
+      };
+    }
+
+    return {
+      ok: true,
+      state,
+    };
+  } catch {
+    return {
+      ok: false,
+      error: "Backup must be valid JSON.",
+    };
   }
 };

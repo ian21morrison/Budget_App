@@ -2,6 +2,9 @@
 
 ## 2026-05-25
 
+- Added JSON backup export and validated import restore for local app data.
+- Centralized local-first persistence defaults and saved-state normalization so
+  user-entered budget data survives refreshes with graceful fallbacks.
 - Refactored the budgeting app into section components, typed models, storage helpers,
   financial calculations, and retirement projection modules without changing UI behavior.
 

@@ -1,6 +1,13 @@
 "use client";
 
-import { type FocusEvent, useEffect, useMemo, useState } from "react";
+import {
+  type ChangeEvent,
+  type FocusEvent,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { AccountsSection } from "@/components/AccountsSection";
 import { BudgetSection } from "@/components/BudgetSection";
 import { ContributionsSection } from "@/components/ContributionsSection";
@@ -19,19 +26,23 @@ import { calculateRetirementProjection } from "@/lib/projections/retirement";
 import {
   DEFAULT_BRAND_NAME,
   DEFAULT_DASHBOARD_TITLE,
+  DEFAULT_MONTHLY_INCOME,
   accountSeed,
   actionSeed,
   budgetSeed,
   colorForIndex,
   colorOptions,
-  contributionReturnSeed,
   debtSeed,
   investmentContributionSeed,
   navItems,
   retirementSeed,
 } from "@/lib/storage/defaults";
 import {
+  createBudgetBackupFileName,
+  createBudgetBackupJson,
+  createDefaultBudgetState,
   loadSavedBudgetState,
+  parseBudgetBackupJson,
   persistBudgetState,
 } from "@/lib/storage/state";
 import type {
@@ -52,22 +63,28 @@ const scrollToSection = (id: string) => {
 const createId = (prefix: string) =>
   `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 
+const defaultBudgetState = createDefaultBudgetState();
+
 export default function Home() {
   const [activeNav, setActiveNav] = useState(navItems[0]);
   const [isEditingBudget, setIsEditingBudget] = useState(false);
-  const [accounts, setAccounts] = useState(accountSeed);
-  const [budgets, setBudgets] = useState(budgetSeed);
-  const [debts, setDebts] = useState(debtSeed);
-  const [goals, setGoals] = useState(actionSeed);
+  const [accounts, setAccounts] = useState(defaultBudgetState.accounts);
+  const [budgets, setBudgets] = useState(defaultBudgetState.budgets);
+  const [debts, setDebts] = useState(defaultBudgetState.debts);
+  const [goals, setGoals] = useState(defaultBudgetState.goals);
   const [brandName, setBrandName] = useState(DEFAULT_BRAND_NAME);
   const [dashboardTitle, setDashboardTitle] = useState(DEFAULT_DASHBOARD_TITLE);
-  const [monthlyIncome, setMonthlyIncome] = useState(6150);
-  const [retirementPlan, setRetirementPlan] = useState(retirementSeed);
+  const [monthlyIncome, setMonthlyIncome] = useState(
+    defaultBudgetState.monthlyIncome,
+  );
+  const [retirementPlan, setRetirementPlan] = useState(
+    defaultBudgetState.retirementPlan,
+  );
   const [investmentContributions, setInvestmentContributions] = useState(
-    investmentContributionSeed,
+    defaultBudgetState.investmentContributions,
   );
   const [contributionReturns, setContributionReturns] = useState(
-    contributionReturnSeed,
+    defaultBudgetState.contributionReturns,
   );
   const [completedActions, setCompletedActions] = useState<string[]>([]);
   const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
@@ -76,6 +93,7 @@ export default function Home() {
     useState(false);
   const [selectedContributionAccountId, setSelectedContributionAccountId] =
     useState("");
+  const importFileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const loadTimer = window.setTimeout(() => {
@@ -100,8 +118,9 @@ export default function Home() {
     return () => window.clearTimeout(loadTimer);
   }, []);
 
-  const saveState = (nextState: Partial<SavedBudgetState>) => {
-    const stateToSave: SavedBudgetState = {
+  const getCurrentState = (
+    nextState: Partial<SavedBudgetState> = {},
+  ): SavedBudgetState => ({
       brandName,
       dashboardTitle,
       accounts,
@@ -114,10 +133,70 @@ export default function Home() {
       contributionReturns,
       completedActions,
       ...nextState,
-    };
+    });
+
+  const restoreState = (nextState: SavedBudgetState) => {
+    setBrandName(nextState.brandName);
+    setDashboardTitle(nextState.dashboardTitle);
+    setAccounts(nextState.accounts);
+    setBudgets(nextState.budgets);
+    setDebts(nextState.debts);
+    setGoals(nextState.goals);
+    setMonthlyIncome(nextState.monthlyIncome);
+    setRetirementPlan(nextState.retirementPlan);
+    setInvestmentContributions(nextState.investmentContributions);
+    setContributionReturns(nextState.contributionReturns);
+    setCompletedActions(nextState.completedActions);
+    persistBudgetState(nextState);
+    setLastSavedAt(new Date());
+  };
+
+  const saveState = (nextState: Partial<SavedBudgetState>) => {
+    const stateToSave = getCurrentState(nextState);
 
     persistBudgetState(stateToSave);
     setLastSavedAt(new Date());
+  };
+
+  const exportData = () => {
+    const backupJson = createBudgetBackupJson(getCurrentState());
+    const blob = new Blob([backupJson], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = createBudgetBackupFileName();
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const startImportData = () => {
+    importFileInputRef.current?.click();
+  };
+
+  const importData = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+
+    if (!file) {
+      return;
+    }
+
+    const importResult = parseBudgetBackupJson(await file.text());
+
+    if (!importResult.ok) {
+      window.alert(`Import failed: ${importResult.error}`);
+      return;
+    }
+
+    const shouldImport = window.confirm(
+      "Importing this backup will overwrite your current local Budget App data on this device. Continue?",
+    );
+
+    if (!shouldImport) {
+      return;
+    }
+
+    restoreState(importResult.state);
   };
 
   const totals = useMemo(
@@ -549,8 +628,8 @@ export default function Home() {
 
   const resetBudget = () => {
     setBudgets(budgetSeed);
-    setMonthlyIncome(6150);
-    saveState({ budgets: budgetSeed, monthlyIncome: 6150 });
+    setMonthlyIncome(DEFAULT_MONTHLY_INCOME);
+    saveState({ budgets: budgetSeed, monthlyIncome: DEFAULT_MONTHLY_INCOME });
   };
 
   const updateGoal = (
@@ -781,6 +860,29 @@ export default function Home() {
               </div>
 
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+                <input
+                  ref={importFileInputRef}
+                  type="file"
+                  accept="application/json,.json"
+                  onChange={importData}
+                  className="hidden"
+                />
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={exportData}
+                    className="w-fit rounded-md border border-white/10 px-3 py-2 text-sm text-neutral-300 transition hover:bg-white/5 hover:text-white"
+                  >
+                    Export Data
+                  </button>
+                  <button
+                    type="button"
+                    onClick={startImportData}
+                    className="w-fit rounded-md border border-white/10 px-3 py-2 text-sm text-neutral-300 transition hover:bg-white/5 hover:text-white"
+                  >
+                    Import Data
+                  </button>
+                </div>
                 <div className="flex overflow-x-auto rounded-lg border border-white/10 bg-white/[0.03] p-1 lg:hidden">
                   {navItems.map((item) => (
                     <button
