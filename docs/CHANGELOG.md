@@ -1,5 +1,10 @@
 # Changelog
 
+## 2026-05-25
+
+- Refactored the budgeting app into section components, typed models, storage helpers,
+  financial calculations, and retirement projection modules without changing UI behavior.
+
 ## 2026-05-23
 
 - Expanded the Budget section and added monthly contributions.
