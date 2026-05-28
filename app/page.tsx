@@ -78,9 +78,17 @@ const createId = (prefix: string) =>
   `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 
 const defaultBudgetState = createDefaultBudgetState();
+const THEME_STORAGE_KEY = "ian-capital-budget-theme";
+
+type InterfaceTheme = "dark" | "light";
+
+const isInterfaceTheme = (value: string | null): value is InterfaceTheme =>
+  value === "dark" || value === "light";
 
 export default function Home() {
   const [activeNav, setActiveNav] = useState(navItems[0]);
+  const [interfaceTheme, setInterfaceTheme] =
+    useState<InterfaceTheme>("dark");
   const [isEditingBudget, setIsEditingBudget] = useState(false);
   const [accounts, setAccounts] = useState(defaultBudgetState.accounts);
   const [budgets, setBudgets] = useState(defaultBudgetState.budgets);
@@ -112,6 +120,11 @@ export default function Home() {
   useEffect(() => {
     const loadTimer = window.setTimeout(() => {
       const savedState = loadSavedBudgetState();
+      const savedTheme = window.localStorage.getItem(THEME_STORAGE_KEY);
+
+      if (isInterfaceTheme(savedTheme)) {
+        setInterfaceTheme(savedTheme);
+      }
 
       if (savedState) {
         setBrandName(savedState.brandName);
@@ -131,6 +144,10 @@ export default function Home() {
 
     return () => window.clearTimeout(loadTimer);
   }, []);
+
+  useEffect(() => {
+    document.documentElement.dataset.theme = interfaceTheme;
+  }, [interfaceTheme]);
 
   const getCurrentState = (
     nextState: Partial<SavedBudgetState> = {},
@@ -170,6 +187,16 @@ export default function Home() {
 
     persistBudgetState(stateToSave);
     setLastSavedAt(new Date());
+  };
+
+  const updateInterfaceTheme = (theme: InterfaceTheme) => {
+    setInterfaceTheme(theme);
+
+    try {
+      window.localStorage.setItem(THEME_STORAGE_KEY, theme);
+    } catch {
+      // Local storage can be unavailable in private windows or restricted contexts.
+    }
   };
 
   const exportData = () => {
@@ -736,7 +763,10 @@ export default function Home() {
   };
 
   return (
-    <main className="min-h-screen bg-neutral-950 text-neutral-100">
+    <main
+      data-theme={interfaceTheme}
+      className="min-h-screen bg-neutral-950 text-neutral-100"
+    >
       <div className="flex min-h-screen bg-[radial-gradient(circle_at_top_left,rgba(16,185,129,0.08),transparent_34%),linear-gradient(180deg,#0b0b0e_0%,#09090b_42%,#0b0b0d_100%)]">
         <aside className="sticky top-0 hidden h-screen w-72 shrink-0 overflow-y-auto border-r border-white/10 bg-neutral-950/80 px-6 py-6 backdrop-blur-xl lg:flex lg:flex-col">
           <div className="mb-5">
@@ -763,24 +793,34 @@ export default function Home() {
 
           <div className="mb-6 rounded-lg border border-white/10 bg-white/[0.04] p-4 shadow-[0_16px_50px_rgba(0,0,0,0.22)]">
             <p className="text-xs font-medium uppercase tracking-[0.08em] text-neutral-500">
-              Cash cushion
+              Appearance
             </p>
-            <p className="mt-1 text-2xl font-semibold">
-              {formatCurrency(totals.cash)}
-            </p>
-            <div className="mt-4 h-2 rounded-full bg-white/10">
-              <div
-                className="h-2 rounded-full bg-emerald-400"
-                style={{
-                  width: `${Math.min(
-                    100,
-                    Math.max(8, (totals.cash / Math.max(totals.assets, 1)) * 100),
-                  )}%`,
-                }}
-              />
+            <div className="mt-3 grid grid-cols-2 gap-1 rounded-lg border border-white/10 bg-neutral-950/55 p-1">
+              {(["dark", "light"] as const).map((theme) => (
+                <button
+                  key={theme}
+                  type="button"
+                  onClick={() => updateInterfaceTheme(theme)}
+                  aria-pressed={interfaceTheme === theme}
+                  className={`flex min-h-10 items-center justify-center gap-2 rounded-md px-3 text-sm font-semibold capitalize transition ${
+                    interfaceTheme === theme
+                      ? "bg-white text-neutral-950 shadow-sm"
+                      : "text-neutral-400 hover:bg-white/[0.06] hover:text-white"
+                  }`}
+                >
+                  <span
+                    aria-hidden="true"
+                    className="size-3 rounded-full"
+                    style={{
+                      backgroundColor: theme === "dark" ? "#1d1d1f" : "#0071e3",
+                    }}
+                  />
+                  {theme}
+                </button>
+              ))}
             </div>
             <p className="mt-3 text-xs text-neutral-500">
-              Accounts marked as cash.
+              Current mode: {interfaceTheme}
             </p>
           </div>
 
