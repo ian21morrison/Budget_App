@@ -35,7 +35,7 @@ import {
   getContributionAccounts,
 } from "@/lib/calculations/budget";
 import { defaultReturnForAccount } from "@/lib/calculations/returns";
-import { formatCurrency, getInitials } from "@/lib/formatting";
+import { formatCurrency } from "@/lib/formatting";
 import { calculateRetirementProjection } from "@/lib/projections/retirement";
 import {
   DEFAULT_BRAND_NAME,
@@ -79,6 +79,7 @@ const createId = (prefix: string) =>
 
 const defaultBudgetState = createDefaultBudgetState();
 const THEME_STORAGE_KEY = "ian-capital-budget-theme";
+const LEGACY_BRAND_NAME = "Ian Capital";
 
 type InterfaceTheme = "dark" | "light";
 
@@ -127,7 +128,12 @@ export default function Home() {
       }
 
       if (savedState) {
-        setBrandName(savedState.brandName);
+        const savedBrandName =
+          savedState.brandName === LEGACY_BRAND_NAME
+            ? DEFAULT_BRAND_NAME
+            : savedState.brandName;
+
+        setBrandName(savedBrandName);
         setDashboardTitle(savedState.dashboardTitle);
         setAccounts(savedState.accounts);
         setBudgets(savedState.budgets);
@@ -139,6 +145,10 @@ export default function Home() {
         setContributionReturns(savedState.contributionReturns);
         setCompletedActions(savedState.completedActions);
         setLastSavedAt(new Date());
+
+        if (savedBrandName !== savedState.brandName) {
+          persistBudgetState({ ...savedState, brandName: savedBrandName });
+        }
       }
     }, 0);
 
@@ -771,22 +781,36 @@ export default function Home() {
         <aside className="sticky top-0 hidden h-screen w-72 shrink-0 overflow-y-auto border-r border-white/10 bg-neutral-950/80 px-6 py-6 backdrop-blur-xl lg:flex lg:flex-col">
           <div className="mb-5">
             <div className="flex items-center gap-3">
-              <div className="grid size-10 place-items-center rounded-lg bg-emerald-400 text-lg font-black text-neutral-950">
-                {getInitials(brandName)}
+              <div
+                className="grid size-12 place-items-center rounded-lg border border-white/20 bg-[#fff] text-neutral-950 shadow-sm"
+                aria-hidden="true"
+              >
+                <svg
+                  viewBox="0 0 24 24"
+                  className="size-8"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                >
+                  <circle cx="12" cy="12" r="9" />
+                  <path
+                    d="M12 4.8 14.1 12 12 10.9 9.9 12 12 4.8Z"
+                    fill="#10b981"
+                    stroke="#10b981"
+                  />
+                  <path d="M12 19.2 9.9 12 12 13.1 14.1 12 12 19.2Z" />
+                  <path d="M12 3v2" />
+                  <path d="M12 19v2" />
+                  <path d="M3 12h2" />
+                  <path d="M19 12h2" />
+                </svg>
               </div>
               <div className="min-w-0">
-                <p className="text-xs font-medium uppercase tracking-[0.12em] text-neutral-500">
-                  Budget Tool
+                <p className="text-xl font-semibold tracking-tight text-neutral-50">
+                  Compass
                 </p>
-                <label className="block">
-                  <span className="sr-only">Brand name</span>
-                  <input
-                    type="text"
-                    value={brandName}
-                    onChange={(event) => updateBrandName(event.target.value)}
-                    className="w-full rounded-md border border-transparent bg-transparent px-1 py-0.5 text-lg font-semibold tracking-tight text-neutral-100 outline-none transition hover:border-white/10 hover:bg-white/[0.04] focus:border-emerald-300/60 focus:bg-neutral-950/70"
-                  />
-                </label>
               </div>
             </div>
           </div>

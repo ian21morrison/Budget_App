@@ -148,9 +148,12 @@ html[data-theme="light"] main[data-theme="light"] {
   background-color: #34c759 !important;
 }
 
-[data-theme="light"] [class~="bg-sky-300"],
-[data-theme="light"] [class~="bg-violet-300"] {
+[data-theme="light"] [class~="bg-sky-300"] {
   background-color: #0071e3 !important;
+}
+
+[data-theme="light"] [class~="bg-violet-300"] {
+  background-color: #8e44ad !important;
 }
 
 [data-theme="light"] [class~="bg-rose-300"] {
