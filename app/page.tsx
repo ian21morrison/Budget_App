@@ -804,17 +804,6 @@ export default function Home() {
                   <path d="M9 19h5V9l-5 10Z" fill="#18181b" />
                   <path d="M18 19h6l-6-8v8Z" fill="#18181b" />
                   <path d="M17 6h9l-2 3 2 3h-9V6Z" fill="#10b981" />
-                  <text
-                    x="21.5"
-                    y="10.6"
-                    fill="#ffffff"
-                    fontFamily="Arial, Helvetica, sans-serif"
-                    fontSize="4.5"
-                    fontWeight="700"
-                    textAnchor="middle"
-                  >
-                    $
-                  </text>
                 </svg>
               </div>
               <div className="min-w-0">
