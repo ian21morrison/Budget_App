@@ -79,7 +79,7 @@ const createId = (prefix: string) =>
 
 const defaultBudgetState = createDefaultBudgetState();
 const THEME_STORAGE_KEY = "ian-capital-budget-theme";
-const LEGACY_BRAND_NAME = "Ian Capital";
+const LEGACY_BRAND_NAMES = ["Ian Capital", "Compass"];
 
 type InterfaceTheme = "dark" | "light";
 
@@ -89,7 +89,7 @@ const isInterfaceTheme = (value: string | null): value is InterfaceTheme =>
 export default function Home() {
   const [activeNav, setActiveNav] = useState(navItems[0]);
   const [interfaceTheme, setInterfaceTheme] =
-    useState<InterfaceTheme>("dark");
+    useState<InterfaceTheme>("light");
   const [isEditingBudget, setIsEditingBudget] = useState(false);
   const [accounts, setAccounts] = useState(defaultBudgetState.accounts);
   const [budgets, setBudgets] = useState(defaultBudgetState.budgets);
@@ -129,7 +129,7 @@ export default function Home() {
 
       if (savedState) {
         const savedBrandName =
-          savedState.brandName === LEGACY_BRAND_NAME
+          LEGACY_BRAND_NAMES.includes(savedState.brandName)
             ? DEFAULT_BRAND_NAME
             : savedState.brandName;
 
@@ -782,34 +782,44 @@ export default function Home() {
           <div className="mb-5">
             <div className="flex items-center gap-3">
               <div
-                className="grid size-12 place-items-center rounded-lg border border-white/20 bg-[#fff] text-neutral-950 shadow-sm"
+                className="grid size-16 place-items-center rounded-lg border border-white/20 bg-[#fff] text-neutral-950 shadow-sm"
                 aria-hidden="true"
               >
                 <svg
-                  viewBox="0 0 24 24"
-                  className="size-8"
+                  viewBox="0 0 32 32"
+                  className="size-12"
                   fill="none"
-                  stroke="currentColor"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth="2"
                 >
-                  <circle cx="12" cy="12" r="9" />
                   <path
-                    d="M12 4.8 14.1 12 12 10.9 9.9 12 12 4.8Z"
-                    fill="#10b981"
-                    stroke="#10b981"
+                    d="M5 21h22l-3.5 5H8.5L5 21Z"
+                    fill="#18181b"
                   />
-                  <path d="M12 19.2 9.9 12 12 13.1 14.1 12 12 19.2Z" />
-                  <path d="M12 3v2" />
-                  <path d="M12 19v2" />
-                  <path d="M3 12h2" />
-                  <path d="M19 12h2" />
+                  <path
+                    d="M9 23.5h14"
+                    stroke="#ffffff"
+                    strokeLinecap="round"
+                    strokeWidth="1.6"
+                  />
+                  <path d="M15 6h2v15h-2V6Z" fill="#18181b" />
+                  <path d="M9 19h5V9l-5 10Z" fill="#18181b" />
+                  <path d="M18 19h6l-6-8v8Z" fill="#18181b" />
+                  <path d="M17 6h9l-2 3 2 3h-9V6Z" fill="#10b981" />
+                  <text
+                    x="21.5"
+                    y="10.6"
+                    fill="#ffffff"
+                    fontFamily="Arial, Helvetica, sans-serif"
+                    fontSize="4.5"
+                    fontWeight="700"
+                    textAnchor="middle"
+                  >
+                    $
+                  </text>
                 </svg>
               </div>
               <div className="min-w-0">
-                <p className="text-xl font-semibold tracking-tight text-neutral-50">
-                  Compass
+                <p className="text-2xl font-semibold tracking-tight text-neutral-50">
+                  Crow&apos;s Nest
                 </p>
               </div>
             </div>
@@ -820,7 +830,7 @@ export default function Home() {
               Appearance
             </p>
             <div className="mt-3 grid grid-cols-2 gap-1 rounded-lg border border-white/10 bg-neutral-950/55 p-1">
-              {(["dark", "light"] as const).map((theme) => (
+              {(["light", "dark"] as const).map((theme) => (
                 <button
                   key={theme}
                   type="button"
@@ -895,7 +905,7 @@ export default function Home() {
                     className="max-w-full rounded-md border border-transparent bg-transparent px-1 py-0.5 text-2xl font-semibold tracking-tight text-neutral-50 outline-none transition hover:border-white/10 hover:bg-white/[0.04] focus:border-emerald-300/60 focus:bg-neutral-950/70 md:text-3xl"
                   />
                 </label>
-                <p className="mt-1 text-sm text-neutral-500">
+                <p className="mt-1 px-1 text-sm text-neutral-500">
                   {lastSavedAt
                     ? `Saved locally at ${lastSavedAt.toLocaleTimeString([], {
                         hour: "numeric",
