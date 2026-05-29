@@ -1,8 +1,16 @@
-import type { Account, Budget, Debt, Goal, RetirementPlan } from "@/types";
+import type {
+  Account,
+  Budget,
+  Debt,
+  Goal,
+  MonthlyActual,
+  RetirementPlan,
+} from "@/types";
 
 export const navItems = [
   "Overview",
   "Budget",
+  "Actuals",
   "Accounts",
   "Debt",
   "Retirement",
@@ -169,8 +177,25 @@ export const DEFAULT_MONTHLY_INVESTING = Object.values(
 
 export const STORAGE_KEY = "ian-capital-budget-state-v1";
 export const DEFAULT_BRAND_NAME = "Crow's Nest";
-export const DEFAULT_DASHBOARD_TITLE = "Interactive budgeting tool";
+export const DEFAULT_DASHBOARD_TITLE = "Portfolio Lookout";
 export const DEFAULT_MONTHLY_INCOME = 6150;
+
+export const getCurrentMonthKey = (date = new Date()) =>
+  date.toISOString().slice(0, 7);
+
+export const createMonthlyActualFromPlan = (
+  month = getCurrentMonthKey(),
+): MonthlyActual => ({
+  month,
+  income: DEFAULT_MONTHLY_INCOME,
+  budgetActuals: budgetSeed.reduce<Record<string, number>>((next, budget) => {
+    next[budget.id] = budget.amount;
+    return next;
+  }, {}),
+  transfers: 0,
+  debtPayments: debtSeed.reduce((total, debt) => total + debt.payment, 0),
+  contributions: DEFAULT_MONTHLY_INVESTING,
+});
 
 export const colorOptions = [
   "bg-emerald-400",

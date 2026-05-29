@@ -46,6 +46,15 @@ export type RetirementPlan = {
 export type InvestmentContributions = Record<string, number>;
 export type ContributionReturns = Record<string, number>;
 
+export type MonthlyActual = {
+  month: string;
+  income: number;
+  budgetActuals: Record<string, number>;
+  transfers: number;
+  debtPayments: number;
+  contributions: number;
+};
+
 export type SavedBudgetState = {
   brandName: string;
   dashboardTitle: string;
@@ -57,7 +66,20 @@ export type SavedBudgetState = {
   retirementPlan: RetirementPlan;
   investmentContributions: InvestmentContributions;
   contributionReturns: ContributionReturns;
+  monthlyActuals: MonthlyActual[];
   completedActions: string[];
+};
+
+export type MonthlyActualTotals = {
+  spending: number;
+  outflow: number;
+  surplus: number;
+  plannedOutflow: number;
+  plannedSurplus: number;
+  incomeVariance: number;
+  spendingVariance: number;
+  outflowVariance: number;
+  surplusVariance: number;
 };
 
 export type BudgetTotals = {

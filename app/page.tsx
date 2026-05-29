@@ -3,6 +3,7 @@
 import {
   type ChangeEvent,
   type FocusEvent,
+  useCallback,
   useEffect,
   useMemo,
   useRef,
@@ -13,6 +14,7 @@ import { BudgetSection } from "@/components/BudgetSection";
 import { ContributionsSection } from "@/components/ContributionsSection";
 import { DebtsSection } from "@/components/DebtsSection";
 import { FinancialOverview } from "@/components/FinancialOverview";
+import { MonthlyActualsSection } from "@/components/MonthlyActualsSection";
 import { RetirementProjectionSection } from "@/components/RetirementProjectionSection";
 import {
   dangerButton,
@@ -30,6 +32,7 @@ import {
 import {
   calculateBudgetTotals,
   calculateIncomeUsedPercent,
+  calculateMonthlyActualTotals,
   calculateMonthlyContributionWeightedReturn,
   getAvailableContributionAccounts,
   getContributionAccounts,
@@ -47,6 +50,7 @@ import {
   colorForIndex,
   colorOptions,
   debtSeed,
+  getCurrentMonthKey,
   investmentContributionSeed,
   navItems,
   retirementSeed,
@@ -63,6 +67,7 @@ import type {
   Account,
   ContributionReturns,
   InvestmentContributions,
+  MonthlyActual,
   RetirementPlan,
   SavedBudgetState,
 } from "@/types";
@@ -76,6 +81,20 @@ const scrollToSection = (id: string) => {
 
 const createId = (prefix: string) =>
   `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+
+const getNextMonthKey = (month: string) => {
+  const [year, monthIndex] = month.split("-").map(Number);
+  const date = new Date(year, monthIndex, 1);
+
+  return date.toISOString().slice(0, 7);
+};
+
+const getPreviousMonthKey = (month: string) => {
+  const [year, monthIndex] = month.split("-").map(Number);
+  const date = new Date(year, monthIndex - 2, 1);
+
+  return date.toISOString().slice(0, 7);
+};
 
 const defaultBudgetState = createDefaultBudgetState();
 const THEME_STORAGE_KEY = "ian-capital-budget-theme";
@@ -95,8 +114,6 @@ export default function Home() {
   const [budgets, setBudgets] = useState(defaultBudgetState.budgets);
   const [debts, setDebts] = useState(defaultBudgetState.debts);
   const [goals, setGoals] = useState(defaultBudgetState.goals);
-  const [brandName, setBrandName] = useState(DEFAULT_BRAND_NAME);
-  const [dashboardTitle, setDashboardTitle] = useState(DEFAULT_DASHBOARD_TITLE);
   const [monthlyIncome, setMonthlyIncome] = useState(
     defaultBudgetState.monthlyIncome,
   );
@@ -108,6 +125,12 @@ export default function Home() {
   );
   const [contributionReturns, setContributionReturns] = useState(
     defaultBudgetState.contributionReturns,
+  );
+  const [monthlyActuals, setMonthlyActuals] = useState(
+    defaultBudgetState.monthlyActuals,
+  );
+  const [selectedActualMonth, setSelectedActualMonth] = useState(
+    defaultBudgetState.monthlyActuals[0]?.month ?? getCurrentMonthKey(),
   );
   const [completedActions, setCompletedActions] = useState<string[]>([]);
   const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
@@ -128,13 +151,6 @@ export default function Home() {
       }
 
       if (savedState) {
-        const savedBrandName =
-          LEGACY_BRAND_NAMES.includes(savedState.brandName)
-            ? DEFAULT_BRAND_NAME
-            : savedState.brandName;
-
-        setBrandName(savedBrandName);
-        setDashboardTitle(savedState.dashboardTitle);
         setAccounts(savedState.accounts);
         setBudgets(savedState.budgets);
         setDebts(savedState.debts);
@@ -143,11 +159,22 @@ export default function Home() {
         setRetirementPlan(savedState.retirementPlan);
         setInvestmentContributions(savedState.investmentContributions);
         setContributionReturns(savedState.contributionReturns);
+        setMonthlyActuals(savedState.monthlyActuals);
+        setSelectedActualMonth(
+          savedState.monthlyActuals[0]?.month ?? getCurrentMonthKey(),
+        );
         setCompletedActions(savedState.completedActions);
         setLastSavedAt(new Date());
 
-        if (savedBrandName !== savedState.brandName) {
-          persistBudgetState({ ...savedState, brandName: savedBrandName });
+        if (
+          LEGACY_BRAND_NAMES.includes(savedState.brandName) ||
+          savedState.brandName !== DEFAULT_BRAND_NAME
+        ) {
+          persistBudgetState({
+            ...savedState,
+            brandName: DEFAULT_BRAND_NAME,
+            dashboardTitle: DEFAULT_DASHBOARD_TITLE,
+          });
         }
       }
     }, 0);
@@ -162,8 +189,8 @@ export default function Home() {
   const getCurrentState = (
     nextState: Partial<SavedBudgetState> = {},
   ): SavedBudgetState => ({
-      brandName,
-      dashboardTitle,
+      brandName: DEFAULT_BRAND_NAME,
+      dashboardTitle: DEFAULT_DASHBOARD_TITLE,
       accounts,
       budgets,
       debts,
@@ -172,23 +199,31 @@ export default function Home() {
       retirementPlan,
       investmentContributions,
       contributionReturns,
+      monthlyActuals,
       completedActions,
       ...nextState,
     });
 
   const restoreState = (nextState: SavedBudgetState) => {
-    setBrandName(nextState.brandName);
-    setDashboardTitle(nextState.dashboardTitle);
-    setAccounts(nextState.accounts);
-    setBudgets(nextState.budgets);
-    setDebts(nextState.debts);
-    setGoals(nextState.goals);
-    setMonthlyIncome(nextState.monthlyIncome);
-    setRetirementPlan(nextState.retirementPlan);
-    setInvestmentContributions(nextState.investmentContributions);
-    setContributionReturns(nextState.contributionReturns);
-    setCompletedActions(nextState.completedActions);
-    persistBudgetState(nextState);
+    const stateToRestore = {
+      ...nextState,
+      dashboardTitle: DEFAULT_DASHBOARD_TITLE,
+    };
+
+    setAccounts(stateToRestore.accounts);
+    setBudgets(stateToRestore.budgets);
+    setDebts(stateToRestore.debts);
+    setGoals(stateToRestore.goals);
+    setMonthlyIncome(stateToRestore.monthlyIncome);
+    setRetirementPlan(stateToRestore.retirementPlan);
+    setInvestmentContributions(stateToRestore.investmentContributions);
+    setContributionReturns(stateToRestore.contributionReturns);
+    setMonthlyActuals(stateToRestore.monthlyActuals);
+    setSelectedActualMonth(
+      stateToRestore.monthlyActuals[0]?.month ?? getCurrentMonthKey(),
+    );
+    setCompletedActions(stateToRestore.completedActions);
+    persistBudgetState(stateToRestore);
     setLastSavedAt(new Date());
   };
 
@@ -290,6 +325,45 @@ export default function Home() {
     ],
   );
 
+  const createActualFromCurrentPlan = useCallback(
+    (month: string): MonthlyActual => ({
+      month,
+      income: monthlyIncome,
+      budgetActuals: budgets.reduce<Record<string, number>>((next, budget) => {
+        next[budget.id] = budget.amount;
+        return next;
+      }, {}),
+      transfers: 0,
+      debtPayments: totals.debtPayments,
+      contributions: totals.monthlyInvestment,
+    }),
+    [budgets, monthlyIncome, totals.debtPayments, totals.monthlyInvestment],
+  );
+
+  const selectedMonthlyActual = useMemo(() => {
+    const existingActual = monthlyActuals.find(
+      (actual) => actual.month === selectedActualMonth,
+    );
+
+    return existingActual ?? createActualFromCurrentPlan(selectedActualMonth);
+  }, [
+    createActualFromCurrentPlan,
+    monthlyActuals,
+    selectedActualMonth,
+  ]);
+
+  const monthlyActualTotals = useMemo(
+    () =>
+      calculateMonthlyActualTotals({
+        actual: selectedMonthlyActual,
+        totals,
+      }),
+    [selectedMonthlyActual, totals],
+  );
+
+  const minimumActualMonth = getCurrentMonthKey();
+  const canGoToPreviousActualMonth = selectedActualMonth > minimumActualMonth;
+
   const incomeUsedPercent = calculateIncomeUsedPercent({
     debtPayments: totals.debtPayments,
     monthlyBudget: totals.monthlyBudget,
@@ -318,16 +392,6 @@ export default function Home() {
   const handleNavClick = (item: string) => {
     setActiveNav(item);
     scrollToSection(item.toLowerCase());
-  };
-
-  const updateBrandName = (value: string) => {
-    setBrandName(value);
-    saveState({ brandName: value });
-  };
-
-  const updateDashboardTitle = (value: string) => {
-    setDashboardTitle(value);
-    saveState({ dashboardTitle: value });
   };
 
   const updateAccount = (
@@ -503,6 +567,55 @@ export default function Home() {
   const updateMonthlyIncome = (value: number) => {
     setMonthlyIncome(value);
     saveState({ monthlyIncome: value });
+  };
+
+  const updateMonthlyActuals = (nextActual: MonthlyActual) => {
+    const hasExistingActual = monthlyActuals.some(
+      (actual) => actual.month === nextActual.month,
+    );
+    const nextActuals = hasExistingActual
+      ? monthlyActuals.map((actual) =>
+          actual.month === nextActual.month ? nextActual : actual,
+        )
+      : [nextActual, ...monthlyActuals];
+
+    setMonthlyActuals(nextActuals);
+    setSelectedActualMonth(nextActual.month);
+    saveState({ monthlyActuals: nextActuals });
+  };
+
+  const updateActualField = (
+    field: "income" | "transfers" | "debtPayments" | "contributions",
+    value: number,
+  ) => {
+    updateMonthlyActuals({
+      ...selectedMonthlyActual,
+      [field]: value,
+    });
+  };
+
+  const updateActualBudget = (budgetId: string, amount: number) => {
+    updateMonthlyActuals({
+      ...selectedMonthlyActual,
+      budgetActuals: {
+        ...selectedMonthlyActual.budgetActuals,
+        [budgetId]: amount,
+      },
+    });
+  };
+
+  const resetSelectedActualMonthFromPlan = () => {
+    updateMonthlyActuals(createActualFromCurrentPlan(selectedActualMonth));
+  };
+
+  const selectActualMonth = (month: string) => {
+    if (!month) {
+      return;
+    }
+
+    setSelectedActualMonth(
+      month < minimumActualMonth ? minimumActualMonth : month,
+    );
   };
 
   const updateRetirementPlan = (
@@ -873,27 +986,9 @@ export default function Home() {
           <header className="sticky top-0 z-10 border-b border-white/10 bg-neutral-950/78 px-4 py-4 backdrop-blur-xl md:px-8">
             <div className="mx-auto flex w-full max-w-7xl flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
               <div>
-                <label className="block">
-                  <span className="sr-only">Brand name</span>
-                  <input
-                    type="text"
-                    value={brandName}
-                    onChange={(event) => updateBrandName(event.target.value)}
-                    className="w-full rounded-md border border-transparent bg-transparent px-1 py-0.5 text-sm font-medium text-neutral-400 outline-none transition hover:border-white/10 hover:bg-white/[0.04] focus:border-emerald-300/60 focus:bg-neutral-950/70 focus:text-neutral-200"
-                  />
-                </label>
-                <label className="block">
-                  <span className="sr-only">Dashboard title</span>
-                  <input
-                    type="text"
-                    value={dashboardTitle}
-                    size={Math.max(dashboardTitle.length, 24)}
-                    onChange={(event) =>
-                      updateDashboardTitle(event.target.value)
-                    }
-                    className="max-w-full rounded-md border border-transparent bg-transparent px-1 py-0.5 text-2xl font-semibold tracking-tight text-neutral-50 outline-none transition hover:border-white/10 hover:bg-white/[0.04] focus:border-emerald-300/60 focus:bg-neutral-950/70 md:text-3xl"
-                  />
-                </label>
+                <h1 className="px-1 py-0.5 text-2xl font-semibold tracking-tight text-neutral-50 md:text-3xl">
+                  {DEFAULT_DASHBOARD_TITLE}
+                </h1>
                 <p className="mt-1 px-1 text-sm text-neutral-500">
                   {lastSavedAt
                     ? `Saved locally at ${lastSavedAt.toLocaleTimeString([], {
@@ -1008,6 +1103,28 @@ export default function Home() {
                     selectNumberInput={selectNumberInput}
                   />
                 }
+              />
+
+              <MonthlyActualsSection
+                actual={selectedMonthlyActual}
+                actualTotals={monthlyActualTotals}
+                budgets={budgets}
+                canGoToPreviousMonth={canGoToPreviousActualMonth}
+                minMonth={minimumActualMonth}
+                totals={totals}
+                onGoToNextMonth={() =>
+                  selectActualMonth(getNextMonthKey(selectedActualMonth))
+                }
+                onGoToPreviousMonth={() =>
+                  selectActualMonth(
+                    getPreviousMonthKey(selectedActualMonth),
+                  )
+                }
+                onResetMonthFromPlan={resetSelectedActualMonthFromPlan}
+                onSelectMonth={selectActualMonth}
+                onUpdateActualBudget={updateActualBudget}
+                onUpdateActualField={updateActualField}
+                selectNumberInput={selectNumberInput}
               />
 
               <div className="grid items-start gap-4">

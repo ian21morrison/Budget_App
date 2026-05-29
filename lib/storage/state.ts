@@ -8,6 +8,7 @@ import {
   accountSeed,
   actionSeed,
   budgetSeed,
+  createMonthlyActualFromPlan,
   debtSeed,
   investmentContributionSeed,
   retirementSeed,
@@ -20,6 +21,7 @@ import type {
   Debt,
   Goal,
   InvestmentContributions,
+  MonthlyActual,
   RetirementPlan,
   SavedBudgetState,
 } from "@/types";
@@ -35,6 +37,7 @@ const BACKUP_STATE_KEYS = [
   "retirementPlan",
   "investmentContributions",
   "contributionReturns",
+  "monthlyActuals",
   "completedActions",
   "brandName",
   "dashboardTitle",
@@ -243,6 +246,41 @@ export const normalizeContributionReturns = (
     return next;
   }, {});
 
+export const normalizeMonthlyActuals = (
+  savedActuals: unknown,
+): MonthlyActual[] => {
+  if (!Array.isArray(savedActuals)) {
+    return [createMonthlyActualFromPlan()];
+  }
+
+  const normalizedActuals = savedActuals
+    .filter(isRecord)
+    .map((actual) => {
+      const month = textValue(actual.month, createMonthlyActualFromPlan().month);
+      const budgetActuals = isRecord(actual.budgetActuals)
+        ? Object.fromEntries(
+            Object.entries(actual.budgetActuals).map(([budgetId, amount]) => [
+              budgetId,
+              numberValue(amount, 0),
+            ]),
+          )
+        : {};
+
+      return {
+        month,
+        income: numberValue(actual.income, DEFAULT_MONTHLY_INCOME),
+        budgetActuals,
+        transfers: numberValue(actual.transfers, 0),
+        debtPayments: numberValue(actual.debtPayments, 0),
+        contributions: numberValue(actual.contributions, DEFAULT_MONTHLY_INVESTING),
+      };
+    });
+
+  return normalizedActuals.length > 0
+    ? normalizedActuals
+    : [createMonthlyActualFromPlan()];
+};
+
 export const createDefaultBudgetState = (): SavedBudgetState => ({
   brandName: DEFAULT_BRAND_NAME,
   dashboardTitle: DEFAULT_DASHBOARD_TITLE,
@@ -258,6 +296,7 @@ export const createDefaultBudgetState = (): SavedBudgetState => ({
     accountSeed,
     retirementSeed,
   ),
+  monthlyActuals: [createMonthlyActualFromPlan()],
   completedActions: [],
 });
 
@@ -295,6 +334,7 @@ export const normalizeSavedBudgetState = (
       accounts,
       retirementPlan,
     ),
+    monthlyActuals: normalizeMonthlyActuals(parsedState.monthlyActuals),
     completedActions: Array.isArray(parsedState.completedActions)
       ? parsedState.completedActions.filter(
           (action): action is string => typeof action === "string",

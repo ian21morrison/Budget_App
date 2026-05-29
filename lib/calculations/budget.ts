@@ -6,6 +6,8 @@ import type {
   ContributionReturns,
   Debt,
   InvestmentContributions,
+  MonthlyActual,
+  MonthlyActualTotals,
 } from "@/types";
 
 export const calculateBudgetTotals = ({
@@ -123,4 +125,37 @@ export const calculateMonthlyContributionWeightedReturn = ({
 
     return total + (monthlyContribution / monthlyInvestment) * accountReturn;
   }, 0);
+};
+
+export const calculateMonthlyActualTotals = ({
+  actual,
+  totals,
+}: {
+  actual: MonthlyActual;
+  totals: Pick<
+    BudgetTotals,
+    "debtPayments" | "monthlyBudget" | "monthlyInvestment" | "monthlySurplus"
+  >;
+}): MonthlyActualTotals => {
+  const spending = Object.values(actual.budgetActuals).reduce(
+    (total, amount) => total + amount,
+    0,
+  );
+  const outflow =
+    spending + actual.transfers + actual.debtPayments + actual.contributions;
+  const surplus = actual.income - outflow;
+  const plannedOutflow =
+    totals.monthlyBudget + totals.debtPayments + totals.monthlyInvestment;
+
+  return {
+    spending,
+    outflow,
+    surplus,
+    plannedOutflow,
+    plannedSurplus: totals.monthlySurplus,
+    incomeVariance: actual.income - (plannedOutflow + totals.monthlySurplus),
+    spendingVariance: spending - totals.monthlyBudget,
+    outflowVariance: outflow - plannedOutflow,
+    surplusVariance: surplus - totals.monthlySurplus,
+  };
 };
