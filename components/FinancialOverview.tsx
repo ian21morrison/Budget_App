@@ -7,15 +7,35 @@ import {
   statusBadge,
   surface,
 } from "@/components/uiStyles";
-import type { BudgetTotals, RetirementPlan, RetirementProjection } from "@/types";
+import type {
+  BudgetTotals,
+  NetWorthSnapshot,
+  RetirementPlan,
+  RetirementProjection,
+} from "@/types";
 
 type FinancialOverviewProps = {
+  netWorthSnapshots: NetWorthSnapshot[];
   retirementPlan: RetirementPlan;
   retirementProjection: RetirementProjection;
   totals: BudgetTotals;
 };
 
+const sumBalances = (balances: Record<string, number>) =>
+  Object.values(balances).reduce((total, balance) => total + balance, 0);
+
+const getSnapshotNetWorth = (snapshot: NetWorthSnapshot) =>
+  sumBalances(snapshot.accountBalances) - sumBalances(snapshot.debtBalances);
+
+const getDaysBetween = (startDate: string, endDate: string) =>
+  Math.round(
+    (new Date(`${endDate}T00:00:00`).getTime() -
+      new Date(`${startDate}T00:00:00`).getTime()) /
+      86_400_000,
+  );
+
 export function FinancialOverview({
+  netWorthSnapshots,
   retirementPlan,
   retirementProjection,
   totals,
@@ -26,6 +46,28 @@ export function FinancialOverview({
   const debtPercent = Math.round(
     (totals.debt / Math.max(totals.assets + totals.debt, 1)) * 100,
   );
+  const trendPoints = [...netWorthSnapshots]
+    .sort((first, second) => first.date.localeCompare(second.date))
+    .map((snapshot) => ({
+      date: snapshot.date,
+      netWorth: getSnapshotNetWorth(snapshot),
+    }));
+  const firstTrendPoint = trendPoints[0];
+  const latestTrendPoint = trendPoints[trendPoints.length - 1];
+  const thirtyDayStartPoint =
+    latestTrendPoint &&
+    [...trendPoints]
+      .reverse()
+      .find((point) => getDaysBetween(point.date, latestTrendPoint.date) >= 30);
+  const trendStartPoint = thirtyDayStartPoint ?? firstTrendPoint;
+  const trendDelta =
+    trendStartPoint && latestTrendPoint
+      ? latestTrendPoint.netWorth - trendStartPoint.netWorth
+      : 0;
+  const trendDays =
+    trendStartPoint && latestTrendPoint
+      ? getDaysBetween(trendStartPoint.date, latestTrendPoint.date)
+      : 0;
 
   return (
     <section
@@ -33,7 +75,7 @@ export function FinancialOverview({
       className="scroll-mt-24 grid gap-4 xl:grid-cols-[minmax(0,1.5fr)_minmax(360px,0.9fr)]"
     >
       <article className={`${surface} overflow-hidden`}>
-        <div className="grid gap-6 p-5 md:p-6 lg:grid-cols-[minmax(0,1fr)_280px]">
+        <div className="grid gap-4 p-5 md:p-6 lg:grid-cols-[minmax(0,1fr)_280px]">
           <div>
             <p className={metricLabel}>Total net worth</p>
             <p className="mt-2 text-4xl font-semibold tracking-tight text-neutral-50 md:text-5xl">
@@ -44,7 +86,7 @@ export function FinancialOverview({
               contributions, and budget plan.
             </p>
 
-            <div className="mt-6 grid gap-3 sm:grid-cols-2">
+            <div className="mt-5 grid gap-3 sm:grid-cols-3">
               <div className={nestedSurface + " p-3"}>
                 <p className={metricLabel}>Assets</p>
                 <p className={`${metricValue} text-xl`}>
@@ -57,10 +99,28 @@ export function FinancialOverview({
                   {formatCurrency(totals.debt)}
                 </p>
               </div>
+              <div className={nestedSurface + " p-3"}>
+                <p className={metricLabel}>30-day change</p>
+                <p
+                  className={`${metricValue} text-xl ${
+                    trendDelta >= 0 ? "text-emerald-300" : "text-rose-300"
+                  }`}
+                >
+                  {trendDelta >= 0 ? "+" : ""}
+                  {formatCurrency(trendDelta)}
+                </p>
+                <p className="mt-1 text-xs text-neutral-500">
+                  {trendDays >= 30
+                    ? "Last 30 days"
+                    : trendDays > 0
+                      ? `${trendDays} tracked days`
+                    : "Starts today"}
+                </p>
+              </div>
             </div>
           </div>
 
-          <div className="grid content-between gap-4 rounded-lg border border-white/10 bg-neutral-950/55 p-4">
+          <div className="grid content-between gap-3 rounded-lg border border-white/10 bg-neutral-950/55 p-4">
             <div>
               <div className="flex items-center justify-between gap-3">
                 <p className={metricLabel}>Retirement projection</p>

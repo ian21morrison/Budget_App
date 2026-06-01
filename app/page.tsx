@@ -15,6 +15,7 @@ import { ContributionsSection } from "@/components/ContributionsSection";
 import { DebtsSection } from "@/components/DebtsSection";
 import { FinancialOverview } from "@/components/FinancialOverview";
 import { MonthlyActualsSection } from "@/components/MonthlyActualsSection";
+import { NetWorthHistorySection } from "@/components/NetWorthHistorySection";
 import { RetirementProjectionSection } from "@/components/RetirementProjectionSection";
 import {
   dangerButton,
@@ -49,7 +50,9 @@ import {
   budgetSeed,
   colorForIndex,
   colorOptions,
+  createNetWorthSnapshot,
   debtSeed,
+  getCurrentDateKey,
   getCurrentMonthKey,
   investmentContributionSeed,
   navItems,
@@ -68,6 +71,7 @@ import type {
   ContributionReturns,
   InvestmentContributions,
   MonthlyActual,
+  NetWorthSnapshot,
   RetirementPlan,
   SavedBudgetState,
 } from "@/types";
@@ -79,7 +83,8 @@ const scrollToSection = (id: string) => {
   });
 };
 
-const getNavItemId = (item: string) => item.toLowerCase();
+const getNavItemId = (item: string) =>
+  item.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
 
 const createId = (prefix: string) =>
   `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
@@ -97,6 +102,23 @@ const getPreviousMonthKey = (month: string) => {
 
   return date.toISOString().slice(0, 7);
 };
+
+const areBalanceRecordsEqual = (
+  first: Record<string, number>,
+  second: Record<string, number>,
+) => {
+  const keys = new Set([...Object.keys(first), ...Object.keys(second)]);
+
+  return [...keys].every((key) => first[key] === second[key]);
+};
+
+const areSnapshotsEqual = (
+  first: NetWorthSnapshot,
+  second: NetWorthSnapshot,
+) =>
+  first.date === second.date &&
+  areBalanceRecordsEqual(first.accountBalances, second.accountBalances) &&
+  areBalanceRecordsEqual(first.debtBalances, second.debtBalances);
 
 const defaultBudgetState = createDefaultBudgetState();
 const THEME_STORAGE_KEY = "ian-capital-budget-theme";
@@ -131,9 +153,13 @@ export default function Home() {
   const [monthlyActuals, setMonthlyActuals] = useState(
     defaultBudgetState.monthlyActuals,
   );
+  const [netWorthSnapshots, setNetWorthSnapshots] = useState(
+    defaultBudgetState.netWorthSnapshots,
+  );
   const [selectedActualMonth, setSelectedActualMonth] = useState(
     defaultBudgetState.monthlyActuals[0]?.month ?? getCurrentMonthKey(),
   );
+  const [hasLoadedBudgetState, setHasLoadedBudgetState] = useState(false);
   const [completedActions, setCompletedActions] = useState<string[]>([]);
   const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
   const [openColorPicker, setOpenColorPicker] = useState<string | null>(null);
@@ -162,6 +188,7 @@ export default function Home() {
         setInvestmentContributions(savedState.investmentContributions);
         setContributionReturns(savedState.contributionReturns);
         setMonthlyActuals(savedState.monthlyActuals);
+        setNetWorthSnapshots(savedState.netWorthSnapshots);
         setSelectedActualMonth(
           savedState.monthlyActuals[0]?.month ?? getCurrentMonthKey(),
         );
@@ -179,6 +206,8 @@ export default function Home() {
           });
         }
       }
+
+      setHasLoadedBudgetState(true);
     }, 0);
 
     return () => window.clearTimeout(loadTimer);
@@ -218,7 +247,7 @@ export default function Home() {
     };
   }, []);
 
-  const getCurrentState = (
+  const getCurrentState = useCallback((
     nextState: Partial<SavedBudgetState> = {},
   ): SavedBudgetState => ({
       brandName: DEFAULT_BRAND_NAME,
@@ -232,9 +261,22 @@ export default function Home() {
       investmentContributions,
       contributionReturns,
       monthlyActuals,
+      netWorthSnapshots,
       completedActions,
       ...nextState,
-    });
+    }), [
+      accounts,
+      budgets,
+      debts,
+      goals,
+      monthlyIncome,
+      retirementPlan,
+      investmentContributions,
+      contributionReturns,
+      monthlyActuals,
+      netWorthSnapshots,
+      completedActions,
+    ]);
 
   const restoreState = (nextState: SavedBudgetState) => {
     const stateToRestore = {
@@ -251,6 +293,7 @@ export default function Home() {
     setInvestmentContributions(stateToRestore.investmentContributions);
     setContributionReturns(stateToRestore.contributionReturns);
     setMonthlyActuals(stateToRestore.monthlyActuals);
+    setNetWorthSnapshots(stateToRestore.netWorthSnapshots);
     setSelectedActualMonth(
       stateToRestore.monthlyActuals[0]?.month ?? getCurrentMonthKey(),
     );
@@ -265,6 +308,40 @@ export default function Home() {
     persistBudgetState(stateToSave);
     setLastSavedAt(new Date());
   };
+
+  useEffect(() => {
+    if (!hasLoadedBudgetState) {
+      return;
+    }
+
+    const trackTimer = window.setTimeout(() => {
+      const todaySnapshot = createNetWorthSnapshot(
+        getCurrentDateKey(),
+        accounts,
+        debts,
+      );
+      const existingSnapshot = netWorthSnapshots.find(
+        (snapshot) => snapshot.date === todaySnapshot.date,
+      );
+
+      if (existingSnapshot && areSnapshotsEqual(existingSnapshot, todaySnapshot)) {
+        return;
+      }
+
+      const nextSnapshots = [
+        todaySnapshot,
+        ...netWorthSnapshots.filter(
+          (snapshot) => snapshot.date !== todaySnapshot.date,
+        ),
+      ].sort((first, second) => first.date.localeCompare(second.date));
+
+      setNetWorthSnapshots(nextSnapshots);
+      persistBudgetState(getCurrentState({ netWorthSnapshots: nextSnapshots }));
+      setLastSavedAt(new Date());
+    }, 0);
+
+    return () => window.clearTimeout(trackTimer);
+  }, [accounts, debts, getCurrentState, hasLoadedBudgetState, netWorthSnapshots]);
 
   const updateInterfaceTheme = (theme: InterfaceTheme) => {
     setInterfaceTheme(theme);
@@ -1077,6 +1154,7 @@ export default function Home() {
 
           <div className="mx-auto w-full max-w-7xl px-4 py-5 md:px-6 lg:px-8">
             <FinancialOverview
+              netWorthSnapshots={netWorthSnapshots}
               retirementPlan={retirementPlan}
               retirementProjection={retirementProjection}
               totals={totals}
@@ -1193,6 +1271,8 @@ export default function Home() {
               onUpdateRetirementPlan={updateRetirementPlan}
               selectNumberInput={selectNumberInput}
             />
+
+            <NetWorthHistorySection snapshots={netWorthSnapshots} />
 
             <section id="goals" className={`mt-4 scroll-mt-24 ${surface}`}>
               <div className={sectionHeader}>

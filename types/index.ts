@@ -55,6 +55,12 @@ export type MonthlyActual = {
   contributions: number;
 };
 
+export type NetWorthSnapshot = {
+  date: string;
+  accountBalances: Record<string, number>;
+  debtBalances: Record<string, number>;
+};
+
 export type SavedBudgetState = {
   brandName: string;
   dashboardTitle: string;
@@ -67,6 +73,7 @@ export type SavedBudgetState = {
   investmentContributions: InvestmentContributions;
   contributionReturns: ContributionReturns;
   monthlyActuals: MonthlyActual[];
+  netWorthSnapshots: NetWorthSnapshot[];
   completedActions: string[];
 };
 

@@ -9,6 +9,7 @@ import {
   actionSeed,
   budgetSeed,
   createMonthlyActualFromPlan,
+  createNetWorthSnapshot,
   debtSeed,
   investmentContributionSeed,
   retirementSeed,
@@ -22,6 +23,7 @@ import type {
   Goal,
   InvestmentContributions,
   MonthlyActual,
+  NetWorthSnapshot,
   RetirementPlan,
   SavedBudgetState,
 } from "@/types";
@@ -38,6 +40,7 @@ const BACKUP_STATE_KEYS = [
   "investmentContributions",
   "contributionReturns",
   "monthlyActuals",
+  "netWorthSnapshots",
   "completedActions",
   "brandName",
   "dashboardTitle",
@@ -281,6 +284,66 @@ export const normalizeMonthlyActuals = (
     : [createMonthlyActualFromPlan()];
 };
 
+const normalizeBalanceRecord = (
+  savedBalances: unknown,
+  fallbackBalances: Record<string, number>,
+) => {
+  if (!isRecord(savedBalances)) {
+    return fallbackBalances;
+  }
+
+  const normalizedBalances = Object.entries(savedBalances).reduce<
+    Record<string, number>
+  >((next, [itemId, balance]) => {
+    next[itemId] = numberValue(balance, fallbackBalances[itemId] ?? 0);
+    return next;
+  }, {});
+
+  return Object.keys(normalizedBalances).length > 0
+    ? normalizedBalances
+    : fallbackBalances;
+};
+
+export const normalizeNetWorthSnapshots = (
+  savedSnapshots: unknown,
+  accounts: Account[],
+  debts: Debt[],
+): NetWorthSnapshot[] => {
+  const fallbackSnapshot = createNetWorthSnapshot(
+    undefined,
+    accounts,
+    debts,
+  );
+
+  if (!Array.isArray(savedSnapshots)) {
+    return [fallbackSnapshot];
+  }
+
+  const normalizedSnapshots = savedSnapshots
+    .filter(isRecord)
+    .map((snapshot) => ({
+      date: textValue(
+        snapshot.date,
+        textValue(snapshot.month, fallbackSnapshot.date).length === 7
+          ? `${textValue(snapshot.month, fallbackSnapshot.date)}-01`
+          : textValue(snapshot.month, fallbackSnapshot.date),
+      ),
+      accountBalances: normalizeBalanceRecord(
+        snapshot.accountBalances,
+        fallbackSnapshot.accountBalances,
+      ),
+      debtBalances: normalizeBalanceRecord(
+        snapshot.debtBalances,
+        fallbackSnapshot.debtBalances,
+      ),
+    }))
+    .sort((first, second) => first.date.localeCompare(second.date));
+
+  return normalizedSnapshots.length > 0
+    ? normalizedSnapshots
+    : [fallbackSnapshot];
+};
+
 export const createDefaultBudgetState = (): SavedBudgetState => ({
   brandName: DEFAULT_BRAND_NAME,
   dashboardTitle: DEFAULT_DASHBOARD_TITLE,
@@ -297,6 +360,7 @@ export const createDefaultBudgetState = (): SavedBudgetState => ({
     retirementSeed,
   ),
   monthlyActuals: [createMonthlyActualFromPlan()],
+  netWorthSnapshots: [createNetWorthSnapshot()],
   completedActions: [],
 });
 
@@ -309,6 +373,7 @@ export const normalizeSavedBudgetState = (
 
   const parsedState = savedState as Partial<SavedBudgetState>;
   const accounts = normalizeAccounts(parsedState.accounts);
+  const debts = normalizeDebts(parsedState.debts);
   const retirementPlan = normalizeRetirementPlan(parsedState.retirementPlan);
   const investmentContributions = normalizeInvestmentContributions(
     parsedState.investmentContributions,
@@ -321,7 +386,7 @@ export const normalizeSavedBudgetState = (
     dashboardTitle: textValue(parsedState.dashboardTitle, DEFAULT_DASHBOARD_TITLE),
     accounts,
     budgets: normalizeBudgets(parsedState.budgets),
-    debts: normalizeDebts(parsedState.debts),
+    debts,
     goals: normalizeGoals(parsedState.goals),
     monthlyIncome:
       typeof parsedState.monthlyIncome === "number"
@@ -335,6 +400,11 @@ export const normalizeSavedBudgetState = (
       retirementPlan,
     ),
     monthlyActuals: normalizeMonthlyActuals(parsedState.monthlyActuals),
+    netWorthSnapshots: normalizeNetWorthSnapshots(
+      parsedState.netWorthSnapshots,
+      accounts,
+      debts,
+    ),
     completedActions: Array.isArray(parsedState.completedActions)
       ? parsedState.completedActions.filter(
           (action): action is string => typeof action === "string",

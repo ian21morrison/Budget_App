@@ -4,6 +4,7 @@ import type {
   Debt,
   Goal,
   MonthlyActual,
+  NetWorthSnapshot,
   RetirementPlan,
 } from "@/types";
 
@@ -14,6 +15,7 @@ export const navItems = [
   "Accounts",
   "Debt",
   "Retirement",
+  "Net Worth History",
   "Goals",
 ];
 
@@ -183,6 +185,9 @@ export const DEFAULT_MONTHLY_INCOME = 6150;
 export const getCurrentMonthKey = (date = new Date()) =>
   date.toISOString().slice(0, 7);
 
+export const getCurrentDateKey = (date = new Date()) =>
+  date.toISOString().slice(0, 10);
+
 export const createMonthlyActualFromPlan = (
   month = getCurrentMonthKey(),
 ): MonthlyActual => ({
@@ -195,6 +200,22 @@ export const createMonthlyActualFromPlan = (
   transfers: 0,
   debtPayments: debtSeed.reduce((total, debt) => total + debt.payment, 0),
   contributions: DEFAULT_MONTHLY_INVESTING,
+});
+
+export const createNetWorthSnapshot = (
+  date = getCurrentDateKey(),
+  accounts = accountSeed,
+  debts = debtSeed,
+): NetWorthSnapshot => ({
+  date,
+  accountBalances: accounts.reduce<Record<string, number>>((next, account) => {
+    next[account.id] = account.balance;
+    return next;
+  }, {}),
+  debtBalances: debts.reduce<Record<string, number>>((next, debt) => {
+    next[debt.id] = debt.balance;
+    return next;
+  }, {}),
 });
 
 export const colorOptions = [
