@@ -79,6 +79,8 @@ const scrollToSection = (id: string) => {
   });
 };
 
+const getNavItemId = (item: string) => item.toLowerCase();
+
 const createId = (prefix: string) =>
   `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 
@@ -185,6 +187,36 @@ export default function Home() {
   useEffect(() => {
     document.documentElement.dataset.theme = interfaceTheme;
   }, [interfaceTheme]);
+
+  useEffect(() => {
+    const updateActiveNavFromScroll = () => {
+      const scrollMarker = window.scrollY + 140;
+      const currentItem = navItems.reduce((current, item) => {
+        const section = document.getElementById(getNavItemId(item));
+
+        if (!section || section.offsetTop > scrollMarker) {
+          return current;
+        }
+
+        return item;
+      }, navItems[0]);
+
+      setActiveNav((current) =>
+        current === currentItem ? current : currentItem,
+      );
+    };
+
+    updateActiveNavFromScroll();
+    window.addEventListener("scroll", updateActiveNavFromScroll, {
+      passive: true,
+    });
+    window.addEventListener("resize", updateActiveNavFromScroll);
+
+    return () => {
+      window.removeEventListener("scroll", updateActiveNavFromScroll);
+      window.removeEventListener("resize", updateActiveNavFromScroll);
+    };
+  }, []);
 
   const getCurrentState = (
     nextState: Partial<SavedBudgetState> = {},
@@ -391,7 +423,7 @@ export default function Home() {
 
   const handleNavClick = (item: string) => {
     setActiveNav(item);
-    scrollToSection(item.toLowerCase());
+    scrollToSection(getNavItemId(item));
   };
 
   const updateAccount = (
