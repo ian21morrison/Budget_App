@@ -364,6 +364,10 @@ export default function Home() {
     URL.revokeObjectURL(url);
   };
 
+  const generateReport = () => {
+    window.print();
+  };
+
   const startImportData = () => {
     importFileInputRef.current?.click();
   };
@@ -1000,7 +1004,10 @@ export default function Home() {
       className="min-h-screen bg-neutral-950 text-neutral-100"
     >
       <div className="flex min-h-screen bg-[radial-gradient(circle_at_top_left,rgba(16,185,129,0.08),transparent_34%),linear-gradient(180deg,#0b0b0e_0%,#09090b_42%,#0b0b0d_100%)]">
-        <aside className="sticky top-0 hidden h-screen w-72 shrink-0 overflow-y-auto border-r border-white/10 bg-neutral-950/80 px-6 py-6 backdrop-blur-xl lg:flex lg:flex-col">
+        <aside
+          data-report-hidden="true"
+          className="sticky top-0 hidden h-screen w-72 shrink-0 overflow-y-auto border-r border-white/10 bg-neutral-950/80 px-6 py-6 backdrop-blur-xl lg:flex lg:flex-col"
+        >
           <div className="mb-5">
             <div className="flex items-center gap-3">
               <div
@@ -1116,7 +1123,7 @@ export default function Home() {
                   onChange={importData}
                   className="hidden"
                 />
-                <div className="flex flex-wrap gap-2">
+                <div data-report-hidden="true" className="flex flex-wrap gap-2">
                   <button
                     type="button"
                     onClick={exportData}
@@ -1131,8 +1138,18 @@ export default function Home() {
                   >
                     Import Data
                   </button>
+                  <button
+                    type="button"
+                    onClick={generateReport}
+                    className={primaryButton}
+                  >
+                    Generate Report
+                  </button>
                 </div>
-                <div className="flex overflow-x-auto rounded-lg border border-white/10 bg-white/[0.03] p-1 lg:hidden">
+                <div
+                  data-report-hidden="true"
+                  className="flex overflow-x-auto rounded-lg border border-white/10 bg-white/[0.03] p-1 lg:hidden"
+                >
                   {navItems.map((item) => (
                     <button
                       key={item}
@@ -1152,7 +1169,10 @@ export default function Home() {
             </div>
           </header>
 
-          <div className="mx-auto w-full max-w-7xl px-4 py-5 md:px-6 lg:px-8">
+          <div
+            data-dashboard-report="true"
+            className="mx-auto w-full max-w-7xl px-4 py-5 md:px-6 lg:px-8"
+          >
             <FinancialOverview
               netWorthSnapshots={netWorthSnapshots}
               retirementPlan={retirementPlan}

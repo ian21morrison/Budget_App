@@ -172,3 +172,70 @@ html[data-theme="light"] main[data-theme="light"] {
 [data-theme="light"] input::placeholder {
   color: #86868b;
 }
+
+@media print {
+  @page {
+    margin: 0.45in;
+  }
+
+  html,
+  body,
+  main {
+    background: #ffffff !important;
+    color: #111827 !important;
+  }
+
+  [data-report-hidden="true"] {
+    display: none !important;
+  }
+
+  header {
+    position: static !important;
+    border-color: #d4d4d8 !important;
+    background: #ffffff !important;
+    color: #111827 !important;
+    padding: 0 0 16px !important;
+  }
+
+  header h1,
+  header p,
+  [data-dashboard-report="true"] h1,
+  [data-dashboard-report="true"] h2,
+  [data-dashboard-report="true"] h3,
+  [data-dashboard-report="true"] h4,
+  [data-dashboard-report="true"] p,
+  [data-dashboard-report="true"] span,
+  [data-dashboard-report="true"] label,
+  [data-dashboard-report="true"] input {
+    color: #111827 !important;
+  }
+
+  [data-dashboard-report="true"] {
+    max-width: none !important;
+    padding: 16px 0 0 !important;
+  }
+
+  [data-dashboard-report="true"] section,
+  [data-dashboard-report="true"] article,
+  [data-dashboard-report="true"] aside,
+  [data-dashboard-report="true"] div {
+    box-shadow: none !important;
+  }
+
+  [data-dashboard-report="true"] [class*="bg-neutral-"],
+  [data-dashboard-report="true"] [class*="bg-white/"],
+  [data-dashboard-report="true"] [class*="bg-white["] {
+    background: #ffffff !important;
+  }
+
+  [data-dashboard-report="true"] [class*="border-white/"],
+  [data-dashboard-report="true"] [class*="divide-white/"] > :not([hidden]) ~ :not([hidden]) {
+    border-color: #d4d4d8 !important;
+  }
+
+  [data-dashboard-report="true"] section,
+  [data-dashboard-report="true"] article {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+}
