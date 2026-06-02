@@ -10,12 +10,9 @@ import type {
 
 export const navItems = [
   "Overview",
-  "Budget",
-  "Actuals",
-  "Accounts",
-  "Debt",
-  "Retirement",
-  "Net Worth History",
+  "Spending Plan",
+  "Balance Sheet",
+  "Long-Term Outlook",
   "Goals",
 ];
 
@@ -194,12 +191,12 @@ export const createMonthlyActualFromPlan = (
   month,
   income: DEFAULT_MONTHLY_INCOME,
   budgetActuals: budgetSeed.reduce<Record<string, number>>((next, budget) => {
-    next[budget.id] = budget.amount;
+    next[budget.id] = -budget.amount;
     return next;
   }, {}),
   transfers: 0,
-  debtPayments: debtSeed.reduce((total, debt) => total + debt.payment, 0),
-  contributions: DEFAULT_MONTHLY_INVESTING,
+  debtPayments: -debtSeed.reduce((total, debt) => total + debt.payment, 0),
+  contributions: -DEFAULT_MONTHLY_INVESTING,
 });
 
 export const createNetWorthSnapshot = (

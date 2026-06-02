@@ -26,6 +26,8 @@ import type {
   NetWorthSnapshot,
   RetirementPlan,
   SavedBudgetState,
+  Transaction,
+  TransactionCategoryType,
 } from "@/types";
 
 const BACKUP_APP_ID = "ian-capital-budget-app";
@@ -40,6 +42,7 @@ const BACKUP_STATE_KEYS = [
   "investmentContributions",
   "contributionReturns",
   "monthlyActuals",
+  "transactions",
   "netWorthSnapshots",
   "completedActions",
   "brandName",
@@ -78,11 +81,35 @@ const numberValue = (value: unknown, fallback: number) =>
       ? Number(value)
       : fallback;
 
+const outflowValue = (value: unknown, fallback: number) => {
+  const amount = numberValue(value, fallback);
+
+  return amount === 0 ? 0 : -Math.abs(amount);
+};
+
 const accountTypeValue = (value: unknown, fallback: AccountType): AccountType => {
   const normalizedValue = typeof value === "string" ? value.toLowerCase() : value;
 
   return normalizedValue === "cash" || normalizedValue === "invested"
     ? normalizedValue
+    : fallback;
+};
+
+const transactionCategoryTypeValue = (
+  value: unknown,
+  fallback: TransactionCategoryType,
+): TransactionCategoryType => {
+  const normalizedValue = typeof value === "string" ? value : "";
+
+  return [
+    "budget",
+    "income",
+    "transfer",
+    "debtPayment",
+    "contribution",
+    "uncategorized",
+  ].includes(normalizedValue)
+    ? (normalizedValue as TransactionCategoryType)
     : fallback;
 };
 
@@ -264,7 +291,7 @@ export const normalizeMonthlyActuals = (
         ? Object.fromEntries(
             Object.entries(actual.budgetActuals).map(([budgetId, amount]) => [
               budgetId,
-              numberValue(amount, 0),
+              outflowValue(amount, 0),
             ]),
           )
         : {};
@@ -273,15 +300,47 @@ export const normalizeMonthlyActuals = (
         month,
         income: numberValue(actual.income, DEFAULT_MONTHLY_INCOME),
         budgetActuals,
-        transfers: numberValue(actual.transfers, 0),
-        debtPayments: numberValue(actual.debtPayments, 0),
-        contributions: numberValue(actual.contributions, DEFAULT_MONTHLY_INVESTING),
+        transfers: outflowValue(actual.transfers, 0),
+        debtPayments: outflowValue(actual.debtPayments, 0),
+        contributions: outflowValue(
+          actual.contributions,
+          DEFAULT_MONTHLY_INVESTING,
+        ),
       };
     });
 
   return normalizedActuals.length > 0
     ? normalizedActuals
     : [createMonthlyActualFromPlan()];
+};
+
+export const normalizeTransactions = (
+  savedTransactions: unknown,
+): Transaction[] => {
+  if (!Array.isArray(savedTransactions)) {
+    return [];
+  }
+
+  return savedTransactions.filter(isRecord).map((transaction, index) => {
+    const description = textValue(transaction.description, "Transaction");
+    const date = textValue(transaction.date, new Date().toISOString().slice(0, 10));
+    const categoryType = transactionCategoryTypeValue(
+      transaction.categoryType,
+      "uncategorized",
+    );
+
+    return {
+      id: textValue(transaction.id, `transaction-${date}-${index}`),
+      date,
+      description,
+      amount: numberValue(transaction.amount, 0),
+      categoryType,
+      budgetId:
+        categoryType === "budget" ? textValue(transaction.budgetId, "") : "",
+      accountId: textValue(transaction.accountId, ""),
+      notes: textValue(transaction.notes, ""),
+    };
+  });
 };
 
 const normalizeBalanceRecord = (
@@ -360,6 +419,7 @@ export const createDefaultBudgetState = (): SavedBudgetState => ({
     retirementSeed,
   ),
   monthlyActuals: [createMonthlyActualFromPlan()],
+  transactions: [],
   netWorthSnapshots: [createNetWorthSnapshot()],
   completedActions: [],
 });
@@ -400,6 +460,7 @@ export const normalizeSavedBudgetState = (
       retirementPlan,
     ),
     monthlyActuals: normalizeMonthlyActuals(parsedState.monthlyActuals),
+    transactions: normalizeTransactions(parsedState.transactions),
     netWorthSnapshots: normalizeNetWorthSnapshots(
       parsedState.netWorthSnapshots,
       accounts,

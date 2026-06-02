@@ -98,6 +98,8 @@ export function MonthlyActualsSection({
   const outflowPercent = Math.round(
     (actualTotals.outflow / Math.max(actual.income, 1)) * 100,
   );
+  const displayedSpendingPercent = Math.max(0, spendingPercent);
+  const displayedOutflowPercent = Math.max(0, outflowPercent);
   const [selectedYear, selectedMonth] = actual.month.split("-").map(Number);
   const [minimumYear, minimumMonth] = minMonth.split("-").map(Number);
   const yearOptions = Array.from({ length: 11 }, (_, index) => minimumYear + index);
@@ -122,6 +124,9 @@ export function MonthlyActualsSection({
           <p className={sectionDescription}>
             Track real income, spending, transfers, debt payments, and
             contributions against the plan.
+          </p>
+          <p className="mt-1 text-xs text-neutral-500">
+            Enter income as positive and spending or other outflows as negative.
           </p>
         </div>
         <div className="grid gap-2 sm:grid-cols-[auto_minmax(300px,1fr)_auto] sm:items-center xl:min-w-[560px]">
@@ -281,20 +286,20 @@ export function MonthlyActualsSection({
             <div className="flex items-center justify-between text-sm">
               <span className="text-neutral-400">Income used</span>
               <span className="font-semibold text-neutral-100">
-                {outflowPercent}%
+                {displayedOutflowPercent}%
               </span>
             </div>
             <div className={`${progressTrack} mt-3 h-3`}>
               <div
                 className={`h-3 rounded-full ${
-                  outflowPercent > 100 ? "bg-rose-300" : "bg-emerald-400"
+                  displayedOutflowPercent > 100 ? "bg-rose-300" : "bg-emerald-400"
                 }`}
-                style={{ width: `${Math.min(100, outflowPercent)}%` }}
+                style={{ width: `${Math.min(100, displayedOutflowPercent)}%` }}
               />
             </div>
             <p className="mt-3 text-xs text-neutral-500">
-              Actual spending is {spendingPercent}% of the planned category
-              budget.
+              Actual spending is {displayedSpendingPercent}% of the planned
+              category budget.
             </p>
           </div>
 
@@ -333,10 +338,14 @@ export function MonthlyActualsSection({
         <div className="grid gap-3">
           {budgets.map((budget) => {
             const actualAmount = actual.budgetActuals[budget.id] ?? 0;
-            const variance = actualAmount - budget.amount;
-            const percent = Math.round(
-              (actualAmount / Math.max(budget.amount, 1)) * 100,
-            );
+            const actualOutflow = -actualAmount;
+            const variance = actualOutflow - budget.amount;
+            const hasPlannedAmount = budget.amount > 0;
+            const percent = hasPlannedAmount
+              ? Math.round((actualOutflow / budget.amount) * 100)
+              : actualOutflow > 0
+                ? 100
+                : 0;
 
             return (
               <div key={budget.id} className={`${subtleSurface} p-4`}>
@@ -359,7 +368,7 @@ export function MonthlyActualsSection({
                     <div className={`${progressTrack} mt-3 h-2`}>
                       <div
                         className={`h-2 rounded-full ${budget.color}`}
-                        style={{ width: `${Math.min(100, percent)}%` }}
+                        style={{ width: `${Math.max(0, Math.min(100, percent))}%` }}
                       />
                     </div>
                   </div>
@@ -373,14 +382,18 @@ export function MonthlyActualsSection({
                     step={25}
                   />
                   <div>
-                    <p className="text-xs text-neutral-500">Variance</p>
+                    <p className="text-xs text-neutral-500">
+                      {hasPlannedAmount ? "Variance" : "Unplanned"}
+                    </p>
                     <p
                       className={`mt-1 font-semibold ${varianceClass(
                         variance,
                         false,
                       )}`}
                     >
-                      {formatCurrency(variance)}
+                      {hasPlannedAmount
+                        ? formatCurrency(variance)
+                        : formatCurrency(actualOutflow)}
                     </p>
                   </div>
                 </div>
@@ -414,7 +427,6 @@ function ActualNumberField({
         <input
           type="number"
           onFocus={selectNumberInput}
-          min="0"
           step={step}
           value={value}
           onChange={(event) => onChange(Number(event.target.value))}

@@ -1,5 +1,24 @@
 # Changelog
 
+## 2026-06-02
+
+- Grouped dashboard sections into Overview, Spending Plan, Balance Sheet,
+  Long-Term Outlook, and Goals for clearer navigation.
+- Refined grouped navigation with expandable subsection links, separate
+  expand/collapse controls, scroll-following active state, and smoother
+  click navigation without highlight flashing.
+- Added manual transaction entry and CSV transaction import, with category
+  mapping into monthly actuals.
+- Added a downloadable transaction CSV template and clearer sign guidance for
+  purchases, refunds, and income.
+- Changed actuals to use signed cash-flow inputs: income is positive, while
+  spending, transfers, debt payments, and contributions are negative.
+- Added transaction persistence and backup support so imported/manual
+  transactions survive refreshes and JSON export/import.
+- Updated Net Worth History range selectors so weekly, monthly, and yearly
+  views filter tracked days instead of collapsing them into one point per
+  period, and removed the ambiguous Change metric from the All view.
+
 ## 2026-05-25
 
 - Upgraded the dashboard visual system with a polished financial overview, more

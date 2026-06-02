@@ -17,6 +17,7 @@ import { FinancialOverview } from "@/components/FinancialOverview";
 import { MonthlyActualsSection } from "@/components/MonthlyActualsSection";
 import { NetWorthHistorySection } from "@/components/NetWorthHistorySection";
 import { RetirementProjectionSection } from "@/components/RetirementProjectionSection";
+import { TransactionsSection } from "@/components/TransactionsSection";
 import {
   dangerButton,
   divider,
@@ -33,6 +34,7 @@ import {
 import {
   calculateBudgetTotals,
   calculateIncomeUsedPercent,
+  createMonthlyActualFromTransactions,
   calculateMonthlyActualTotals,
   calculateMonthlyContributionWeightedReturn,
   getAvailableContributionAccounts,
@@ -66,6 +68,7 @@ import {
   parseBudgetBackupJson,
   persistBudgetState,
 } from "@/lib/storage/state";
+import { parseTransactionCsv } from "@/lib/transactions/csv";
 import type {
   Account,
   ContributionReturns,
@@ -74,6 +77,7 @@ import type {
   NetWorthSnapshot,
   RetirementPlan,
   SavedBudgetState,
+  Transaction,
 } from "@/types";
 
 const scrollToSection = (id: string) => {
@@ -88,6 +92,45 @@ const getNavItemId = (item: string) =>
 
 const createId = (prefix: string) =>
   `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+
+const navGroups = [
+  {
+    label: "Overview",
+    children: [],
+  },
+  {
+    label: "Spending Plan",
+    children: [
+      { label: "Budget", id: "budget" },
+      { label: "Actuals", id: "actuals" },
+      { label: "Transactions", id: "transactions" },
+    ],
+  },
+  {
+    label: "Balance Sheet",
+    children: [
+      { label: "Accounts", id: "accounts" },
+      { label: "Debt", id: "debt" },
+    ],
+  },
+  {
+    label: "Long-Term Outlook",
+    children: [
+      { label: "Retirement", id: "retirement" },
+      { label: "Net Worth History", id: "net-worth-history" },
+    ],
+  },
+  {
+    label: "Goals",
+    children: [],
+  },
+] satisfies Array<{
+  label: string;
+  children: Array<{
+    label: string;
+    id: string;
+  }>;
+}>;
 
 const getNextMonthKey = (month: string) => {
   const [year, monthIndex] = month.split("-").map(Number);
@@ -131,6 +174,9 @@ const isInterfaceTheme = (value: string | null): value is InterfaceTheme =>
 
 export default function Home() {
   const [activeNav, setActiveNav] = useState(navItems[0]);
+  const [openNavGroups, setOpenNavGroups] = useState<string[]>([
+    "Spending Plan",
+  ]);
   const [interfaceTheme, setInterfaceTheme] =
     useState<InterfaceTheme>("light");
   const [isEditingBudget, setIsEditingBudget] = useState(false);
@@ -153,6 +199,9 @@ export default function Home() {
   const [monthlyActuals, setMonthlyActuals] = useState(
     defaultBudgetState.monthlyActuals,
   );
+  const [transactions, setTransactions] = useState(
+    defaultBudgetState.transactions,
+  );
   const [netWorthSnapshots, setNetWorthSnapshots] = useState(
     defaultBudgetState.netWorthSnapshots,
   );
@@ -168,6 +217,8 @@ export default function Home() {
   const [selectedContributionAccountId, setSelectedContributionAccountId] =
     useState("");
   const importFileInputRef = useRef<HTMLInputElement>(null);
+  const pendingNavItemRef = useRef<string | null>(null);
+  const pendingNavTimerRef = useRef<number | null>(null);
 
   useEffect(() => {
     const loadTimer = window.setTimeout(() => {
@@ -188,6 +239,7 @@ export default function Home() {
         setInvestmentContributions(savedState.investmentContributions);
         setContributionReturns(savedState.contributionReturns);
         setMonthlyActuals(savedState.monthlyActuals);
+        setTransactions(savedState.transactions);
         setNetWorthSnapshots(savedState.netWorthSnapshots);
         setSelectedActualMonth(
           savedState.monthlyActuals[0]?.month ?? getCurrentMonthKey(),
@@ -219,6 +271,10 @@ export default function Home() {
 
   useEffect(() => {
     const updateActiveNavFromScroll = () => {
+      if (pendingNavItemRef.current) {
+        return;
+      }
+
       const scrollMarker = window.scrollY + 140;
       const currentItem = navItems.reduce((current, item) => {
         const section = document.getElementById(getNavItemId(item));
@@ -244,6 +300,9 @@ export default function Home() {
     return () => {
       window.removeEventListener("scroll", updateActiveNavFromScroll);
       window.removeEventListener("resize", updateActiveNavFromScroll);
+      if (pendingNavTimerRef.current) {
+        window.clearTimeout(pendingNavTimerRef.current);
+      }
     };
   }, []);
 
@@ -261,6 +320,7 @@ export default function Home() {
       investmentContributions,
       contributionReturns,
       monthlyActuals,
+      transactions,
       netWorthSnapshots,
       completedActions,
       ...nextState,
@@ -274,6 +334,7 @@ export default function Home() {
       investmentContributions,
       contributionReturns,
       monthlyActuals,
+      transactions,
       netWorthSnapshots,
       completedActions,
     ]);
@@ -293,6 +354,7 @@ export default function Home() {
     setInvestmentContributions(stateToRestore.investmentContributions);
     setContributionReturns(stateToRestore.contributionReturns);
     setMonthlyActuals(stateToRestore.monthlyActuals);
+    setTransactions(stateToRestore.transactions);
     setNetWorthSnapshots(stateToRestore.netWorthSnapshots);
     setSelectedActualMonth(
       stateToRestore.monthlyActuals[0]?.month ?? getCurrentMonthKey(),
@@ -443,12 +505,12 @@ export default function Home() {
       month,
       income: monthlyIncome,
       budgetActuals: budgets.reduce<Record<string, number>>((next, budget) => {
-        next[budget.id] = budget.amount;
+        next[budget.id] = -budget.amount;
         return next;
       }, {}),
       transfers: 0,
-      debtPayments: totals.debtPayments,
-      contributions: totals.monthlyInvestment,
+      debtPayments: -totals.debtPayments,
+      contributions: -totals.monthlyInvestment,
     }),
     [budgets, monthlyIncome, totals.debtPayments, totals.monthlyInvestment],
   );
@@ -474,7 +536,28 @@ export default function Home() {
     [selectedMonthlyActual, totals],
   );
 
-  const minimumActualMonth = getCurrentMonthKey();
+  const transactionMonthlyActual = useMemo(
+    () =>
+      createMonthlyActualFromTransactions({
+        month: selectedActualMonth,
+        planActual: createActualFromCurrentPlan(selectedActualMonth),
+        budgets,
+        transactions,
+      }),
+    [budgets, createActualFromCurrentPlan, selectedActualMonth, transactions],
+  );
+
+  const minimumActualMonth = useMemo(() => {
+    const monthKeys = [
+      getCurrentMonthKey(),
+      ...monthlyActuals.map((actual) => actual.month),
+      ...transactions.map((transaction) => transaction.date.slice(0, 7)),
+    ].filter(Boolean);
+
+    return monthKeys.reduce((earliest, month) =>
+      month < earliest ? month : earliest,
+    );
+  }, [monthlyActuals, transactions]);
   const canGoToPreviousActualMonth = selectedActualMonth > minimumActualMonth;
 
   const incomeUsedPercent = calculateIncomeUsedPercent({
@@ -503,8 +586,30 @@ export default function Home() {
   );
 
   const handleNavClick = (item: string) => {
+    if (pendingNavTimerRef.current) {
+      window.clearTimeout(pendingNavTimerRef.current);
+    }
+
+    pendingNavItemRef.current = item;
     setActiveNav(item);
     scrollToSection(getNavItemId(item));
+    pendingNavTimerRef.current = window.setTimeout(() => {
+      pendingNavItemRef.current = null;
+      pendingNavTimerRef.current = null;
+    }, 700);
+  };
+
+  const toggleNavGroup = (item: string) => {
+    setOpenNavGroups((current) =>
+      current.includes(item)
+        ? current.filter((group) => group !== item)
+        : [...current, item],
+    );
+  };
+
+  const handleNavChildClick = (parentItem: string, childId: string) => {
+    setActiveNav(parentItem);
+    scrollToSection(childId);
   };
 
   const updateAccount = (
@@ -719,6 +824,169 @@ export default function Home() {
 
   const resetSelectedActualMonthFromPlan = () => {
     updateMonthlyActuals(createActualFromCurrentPlan(selectedActualMonth));
+  };
+
+  const addTransaction = () => {
+    const nextTransactions: Transaction[] = [
+      {
+        id: createId("transaction"),
+        date: `${selectedActualMonth}-01`,
+        description: "New transaction",
+        amount: 0,
+        categoryType: "uncategorized",
+        budgetId: "",
+        accountId: "",
+        notes: "",
+      },
+      ...transactions,
+    ];
+
+    setTransactions(nextTransactions);
+    saveState({ transactions: nextTransactions });
+  };
+
+  const updateTransaction = (
+    transactionId: string,
+    nextTransaction: Partial<Transaction>,
+  ) => {
+    const nextTransactions = transactions.map((transaction) =>
+      transaction.id === transactionId
+        ? {
+            ...transaction,
+            ...nextTransaction,
+          }
+        : transaction,
+    );
+
+    setTransactions(nextTransactions);
+    saveState({ transactions: nextTransactions });
+  };
+
+  const deleteTransaction = (transactionId: string) => {
+    const nextTransactions = transactions.filter(
+      (transaction) => transaction.id !== transactionId,
+    );
+
+    setTransactions(nextTransactions);
+    saveState({ transactions: nextTransactions });
+  };
+
+  const importTransactionCsv = (csv: string) => {
+    const importResult = parseTransactionCsv({
+      accounts,
+      budgets,
+      csv,
+      idPrefix: createId("import"),
+    });
+
+    if (importResult.transactions.length === 0) {
+      window.alert("No valid transactions were found in that CSV.");
+      return;
+    }
+
+    const nextTransactions = [
+      ...importResult.transactions,
+      ...transactions,
+    ].sort((first, second) => second.date.localeCompare(first.date));
+
+    setTransactions(nextTransactions);
+    setSelectedActualMonth(importResult.transactions[0].date.slice(0, 7));
+    saveState({ transactions: nextTransactions });
+
+    if (importResult.skippedRows > 0) {
+      window.alert(
+        `Imported ${importResult.transactions.length} transactions and skipped ${importResult.skippedRows} rows.`,
+      );
+    }
+  };
+
+  const downloadTransactionCsvTemplate = () => {
+    const sampleBudget = budgets[0];
+    const sampleAccount = accounts[0];
+    const rows = [
+      ["date", "description", "amount", "category", "account", "notes"],
+      [
+        getCurrentDateKey(),
+        "Paycheck",
+        "2500",
+        "Income",
+        sampleAccount?.name ?? "",
+        "Income is imported as actual income",
+      ],
+      [
+        getCurrentDateKey(),
+        sampleBudget ? `${sampleBudget.label} purchase` : "Budget purchase",
+        "-45.67",
+        sampleBudget?.label ?? "Groceries",
+        sampleAccount?.name ?? "",
+        "Use an existing budget category name",
+      ],
+      [
+        getCurrentDateKey(),
+        "Roth IRA contribution",
+        "-625",
+        "Investment contribution",
+        sampleAccount?.name ?? "",
+        "Special categories also include Transfer and Debt payment",
+      ],
+    ];
+    const csv = rows
+      .map((row) =>
+        row.map((cell) => `"${cell.replaceAll('"', '""')}"`).join(","),
+      )
+      .join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "transaction-import-template.csv";
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const applyTransactionsToActuals = () => {
+    const monthlyTransactions = transactions.filter((transaction) =>
+      transaction.date.startsWith(selectedActualMonth),
+    );
+    const budgetSums = monthlyTransactions.reduce<Record<string, number>>(
+      (next, transaction) => {
+        if (transaction.categoryType === "budget" && transaction.budgetId) {
+          next[transaction.budgetId] =
+            (next[transaction.budgetId] ?? 0) + transaction.amount;
+        }
+
+        return next;
+      },
+      {},
+    );
+    const sumByCategory = (categoryType: Transaction["categoryType"]) =>
+      monthlyTransactions
+        .filter((transaction) => transaction.categoryType === categoryType)
+        .reduce((total, transaction) => total + transaction.amount, 0);
+    const hasCategory = (categoryType: Transaction["categoryType"]) =>
+      monthlyTransactions.some(
+        (transaction) => transaction.categoryType === categoryType,
+      );
+
+    updateMonthlyActuals({
+      ...selectedMonthlyActual,
+      income: hasCategory("income")
+        ? sumByCategory("income")
+        : selectedMonthlyActual.income,
+      transfers: hasCategory("transfer")
+        ? sumByCategory("transfer")
+        : selectedMonthlyActual.transfers,
+      debtPayments: hasCategory("debtPayment")
+        ? sumByCategory("debtPayment")
+        : selectedMonthlyActual.debtPayments,
+      contributions: hasCategory("contribution")
+        ? sumByCategory("contribution")
+        : selectedMonthlyActual.contributions,
+      budgetActuals: {
+        ...selectedMonthlyActual.budgetActuals,
+        ...budgetSums,
+      },
+    });
   };
 
   const selectActualMonth = (month: string) => {
@@ -1076,24 +1344,89 @@ export default function Home() {
             </p>
           </div>
 
-          <nav className="space-y-1.5">
-            {navItems.map((item) => (
-              <button
-                key={item}
-                type="button"
-                onClick={() => handleNavClick(item)}
-                className={`flex w-full items-center justify-between rounded-md px-3 py-2.5 text-left text-sm transition ${
-                  item === activeNav
-                    ? "bg-white text-neutral-950 shadow-sm"
-                    : "text-neutral-400 hover:bg-white/[0.06] hover:text-white"
-                }`}
-              >
-                <span>{item}</span>
-                {item === activeNav ? (
-                  <span className="size-1.5 rounded-full bg-emerald-500" />
-                ) : null}
-              </button>
-            ))}
+          <nav className="space-y-2">
+            {navGroups.map((group) => {
+              const isActive = group.label === activeNav;
+              const hasChildren = group.children.length > 0;
+              const isOpen = openNavGroups.includes(group.label);
+
+              return (
+                <div key={group.label} className="relative">
+                  <div
+                    className={`group flex w-full items-center justify-between rounded-lg border text-sm transition ${
+                      isActive
+                        ? "border-white/15 bg-white text-neutral-950 shadow-[0_12px_30px_rgba(0,0,0,0.22)]"
+                        : "border-transparent bg-transparent text-neutral-400 hover:border-white/10 hover:bg-white/[0.055] hover:text-neutral-100"
+                    }`}
+                  >
+                    <span
+                      aria-hidden="true"
+                      className={`absolute left-0 top-2 h-6 w-1 rounded-r-full transition ${
+                        isActive ? "bg-emerald-400" : "bg-transparent"
+                      }`}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => handleNavClick(group.label)}
+                      className="min-h-11 min-w-0 flex-1 px-3.5 py-2.5 text-left font-semibold"
+                    >
+                      {group.label}
+                    </button>
+                    <span className="flex items-center gap-1.5 pr-1.5">
+                      {isActive ? (
+                        <span className="size-1.5 rounded-full bg-emerald-500 shadow-[0_0_0_3px_rgba(16,185,129,0.16)]" />
+                      ) : null}
+                      {hasChildren ? (
+                        <button
+                          type="button"
+                          onClick={() => toggleNavGroup(group.label)}
+                          aria-expanded={isOpen}
+                          aria-label={`${isOpen ? "Collapse" : "Expand"} ${group.label}`}
+                          className={`grid min-h-9 w-9 place-items-center rounded-md transition focus:outline-none focus:ring-2 focus:ring-emerald-300/30 ${
+                            isActive
+                              ? "hover:bg-black/5"
+                              : "hover:bg-white/[0.07] hover:text-white"
+                          }`}
+                        >
+                          <svg
+                            aria-hidden="true"
+                            viewBox="0 0 20 20"
+                            className={`size-4 transition ${
+                              isOpen ? "rotate-180" : ""
+                            }`}
+                            fill="none"
+                          >
+                            <path
+                              d="M5.5 8 10 12.5 14.5 8"
+                              stroke="currentColor"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth="1.8"
+                            />
+                          </svg>
+                        </button>
+                      ) : null}
+                    </span>
+                  </div>
+                  {hasChildren && isOpen ? (
+                    <div className="ml-4 mt-1.5 grid gap-1 border-l border-white/10 pl-3">
+                      {group.children.map((child) => (
+                        <button
+                          key={child.id}
+                          type="button"
+                          onClick={() =>
+                            handleNavChildClick(group.label, child.id)
+                          }
+                          className="rounded-md px-3 py-2 text-left text-xs font-semibold text-neutral-500 transition hover:bg-white/[0.055] hover:text-neutral-100"
+                        >
+                          {child.label}
+                        </button>
+                      ))}
+                    </div>
+                  ) : null}
+                </div>
+              );
+            })}
           </nav>
 
         </aside>
@@ -1148,22 +1481,81 @@ export default function Home() {
                 </div>
                 <div
                   data-report-hidden="true"
-                  className="flex overflow-x-auto rounded-lg border border-white/10 bg-white/[0.03] p-1 lg:hidden"
+                  className="flex max-w-full gap-1.5 overflow-x-auto rounded-lg border border-white/10 bg-neutral-950/45 p-1.5 shadow-[0_12px_35px_rgba(0,0,0,0.18)] lg:hidden"
                 >
-                  {navItems.map((item) => (
-                    <button
-                      key={item}
-                      type="button"
-                      onClick={() => handleNavClick(item)}
-                      className={`whitespace-nowrap rounded-md px-3 py-2 text-sm ${
-                        item === activeNav
-                          ? "bg-white text-neutral-950"
-                          : "text-neutral-400"
-                      }`}
-                    >
-                      {item}
-                    </button>
-                  ))}
+                  {navGroups.flatMap((group) => {
+                    const isActive = group.label === activeNav;
+                    const hasChildren = group.children.length > 0;
+                    const isOpen = openNavGroups.includes(group.label);
+                    const parentButton = (
+                      <div
+                        key={group.label}
+                        className={`flex min-h-10 shrink-0 items-center whitespace-nowrap rounded-md border text-sm transition ${
+                          isActive
+                            ? "border-white/15 bg-white text-neutral-950 shadow-sm"
+                            : "border-transparent text-neutral-400 hover:border-white/10 hover:bg-white/[0.055] hover:text-neutral-100"
+                        }`}
+                      >
+                        <button
+                          type="button"
+                          onClick={() => handleNavClick(group.label)}
+                          className="min-h-10 px-3 py-2 text-left font-semibold"
+                        >
+                          {group.label}
+                        </button>
+                        {hasChildren ? (
+                          <button
+                            type="button"
+                            onClick={() => toggleNavGroup(group.label)}
+                            aria-expanded={isOpen}
+                            aria-label={`${isOpen ? "Collapse" : "Expand"} ${group.label}`}
+                            className={`grid min-h-10 w-9 place-items-center rounded-md transition ${
+                              isActive
+                                ? "hover:bg-black/5"
+                                : "hover:bg-white/[0.07] hover:text-white"
+                            }`}
+                          >
+                            <svg
+                              aria-hidden="true"
+                              viewBox="0 0 20 20"
+                              className={`size-4 transition ${
+                                isOpen ? "rotate-180" : ""
+                              }`}
+                              fill="none"
+                            >
+                              <path
+                                d="M5.5 8 10 12.5 14.5 8"
+                                stroke="currentColor"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth="1.8"
+                              />
+                            </svg>
+                          </button>
+                        ) : null}
+                      </div>
+                    );
+
+                    if (!hasChildren || !isOpen) {
+                      return [parentButton];
+                    }
+
+                    return [
+                      parentButton,
+                      ...group.children.map((child) => (
+                        <button
+                          key={`${group.label}-${child.id}`}
+                          type="button"
+                          onClick={() =>
+                            handleNavChildClick(group.label, child.id)
+                          }
+                          className="min-h-10 shrink-0 whitespace-nowrap rounded-md border border-white/10 bg-white/[0.025] px-3 py-2 text-xs font-semibold text-neutral-500 transition hover:border-white/15 hover:bg-white/[0.055] hover:text-neutral-100"
+                        >
+                          {child.label}
+                        </button>
+                      )),
+                    ];
+                  })}
                 </div>
               </div>
             </div>
@@ -1180,7 +1572,16 @@ export default function Home() {
               totals={totals}
             />
 
-            <section className="mt-4 space-y-4">
+            <section id="spending-plan" className="mt-5 scroll-mt-24">
+              <div className="mb-3 px-1">
+                <h2 className="text-lg font-semibold tracking-tight text-neutral-50">
+                  Spending Plan
+                </h2>
+                <p className="mt-1 text-sm leading-6 text-neutral-500">
+                  Plan the month, record actuals, and apply transaction detail.
+                </p>
+              </div>
+
               <BudgetSection
                 budgets={budgets}
                 incomeUsedPercent={incomeUsedPercent}
@@ -1257,6 +1658,31 @@ export default function Home() {
                 selectNumberInput={selectNumberInput}
               />
 
+              <TransactionsSection
+                accounts={accounts}
+                budgets={budgets}
+                selectedMonth={selectedActualMonth}
+                transactionActual={transactionMonthlyActual}
+                transactions={transactions}
+                onAddTransaction={addTransaction}
+                onApplyToActuals={applyTransactionsToActuals}
+                onDeleteTransaction={deleteTransaction}
+                onDownloadCsvTemplate={downloadTransactionCsvTemplate}
+                onImportCsv={importTransactionCsv}
+                onUpdateTransaction={updateTransaction}
+                selectNumberInput={selectNumberInput}
+              />
+            </section>
+
+            <section id="balance-sheet" className="mt-5 scroll-mt-24">
+              <div className="mb-3 px-1">
+                <h2 className="text-lg font-semibold tracking-tight text-neutral-50">
+                  Balance Sheet
+                </h2>
+                <p className="mt-1 text-sm leading-6 text-neutral-500">
+                  Maintain account balances, cash, investments, and liabilities.
+                </p>
+              </div>
               <div className="grid items-start gap-4">
                 <AccountsSection
                   accounts={accounts}
@@ -1283,16 +1709,27 @@ export default function Home() {
               </div>
             </section>
 
-            <RetirementProjectionSection
-              retirementPlan={retirementPlan}
-              retirementProjection={retirementProjection}
-              totals={totals}
-              onResetRetirementPlan={resetRetirementPlan}
-              onUpdateRetirementPlan={updateRetirementPlan}
-              selectNumberInput={selectNumberInput}
-            />
+            <section id="long-term-outlook" className="mt-5 scroll-mt-24">
+              <div className="mb-3 px-1">
+                <h2 className="text-lg font-semibold tracking-tight text-neutral-50">
+                  Long-Term Outlook
+                </h2>
+                <p className="mt-1 text-sm leading-6 text-neutral-500">
+                  Review retirement progress and how net worth is changing.
+                </p>
+              </div>
 
-            <NetWorthHistorySection snapshots={netWorthSnapshots} />
+              <RetirementProjectionSection
+                retirementPlan={retirementPlan}
+                retirementProjection={retirementProjection}
+                totals={totals}
+                onResetRetirementPlan={resetRetirementPlan}
+                onUpdateRetirementPlan={updateRetirementPlan}
+                selectNumberInput={selectNumberInput}
+              />
+
+              <NetWorthHistorySection snapshots={netWorthSnapshots} />
+            </section>
 
             <section id="goals" className={`mt-4 scroll-mt-24 ${surface}`}>
               <div className={sectionHeader}>

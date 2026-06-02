@@ -8,6 +8,7 @@ import type {
   InvestmentContributions,
   MonthlyActual,
   MonthlyActualTotals,
+  Transaction,
 } from "@/types";
 
 export const calculateBudgetTotals = ({
@@ -137,12 +138,17 @@ export const calculateMonthlyActualTotals = ({
     "debtPayments" | "monthlyBudget" | "monthlyInvestment" | "monthlySurplus"
   >;
 }): MonthlyActualTotals => {
-  const spending = Object.values(actual.budgetActuals).reduce(
+  const signedSpending = Object.values(actual.budgetActuals).reduce(
     (total, amount) => total + amount,
     0,
   );
-  const outflow =
-    spending + actual.transfers + actual.debtPayments + actual.contributions;
+  const spending = Object.values(actual.budgetActuals).reduce(
+    (total, amount) => total - amount,
+    0,
+  );
+  const signedOutflow =
+    signedSpending + actual.transfers + actual.debtPayments + actual.contributions;
+  const outflow = -signedOutflow;
   const surplus = actual.income - outflow;
   const plannedOutflow =
     totals.monthlyBudget + totals.debtPayments + totals.monthlyInvestment;
@@ -158,4 +164,66 @@ export const calculateMonthlyActualTotals = ({
     outflowVariance: outflow - plannedOutflow,
     surplusVariance: surplus - totals.monthlySurplus,
   };
+};
+
+export const createMonthlyActualFromTransactions = ({
+  month,
+  planActual,
+  budgets,
+  transactions,
+}: {
+  month: string;
+  planActual: MonthlyActual;
+  budgets: Budget[];
+  transactions: Transaction[];
+}): MonthlyActual => {
+  const budgetActuals = budgets.reduce<Record<string, number>>((next, budget) => {
+    next[budget.id] = 0;
+    return next;
+  }, {});
+  const monthlyTransactions = transactions.filter((transaction) =>
+    transaction.date.startsWith(month),
+  );
+
+  return monthlyTransactions.reduce<MonthlyActual>(
+    (next, transaction) => {
+      if (transaction.categoryType === "income") {
+        next.income += transaction.amount;
+        return next;
+      }
+
+      if (transaction.categoryType === "transfer") {
+        next.transfers += transaction.amount;
+        return next;
+      }
+
+      if (transaction.categoryType === "debtPayment") {
+        next.debtPayments += transaction.amount;
+        return next;
+      }
+
+      if (transaction.categoryType === "contribution") {
+        next.contributions += transaction.amount;
+        return next;
+      }
+
+      if (
+        transaction.categoryType === "budget" &&
+        transaction.budgetId &&
+        Object.prototype.hasOwnProperty.call(budgetActuals, transaction.budgetId)
+      ) {
+        next.budgetActuals[transaction.budgetId] += transaction.amount;
+      }
+
+      return next;
+    },
+    {
+      ...planActual,
+      income: 0,
+      budgetActuals,
+      transfers: 0,
+      debtPayments: 0,
+      contributions: 0,
+    },
+  );
 };

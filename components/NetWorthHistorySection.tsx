@@ -38,37 +38,8 @@ const getSnapshotTotals = (snapshot: NetWorthSnapshot) => {
   };
 };
 
-const getDateKey = (date: Date) => date.toISOString().slice(0, 10);
-
-const getWeekKey = (dateKey: string) => {
+const formatDateLabel = (dateKey: string) => {
   const date = new Date(`${dateKey}T00:00:00`);
-  const day = date.getDay();
-  const mondayOffset = day === 0 ? -6 : 1 - day;
-  date.setDate(date.getDate() + mondayOffset);
-
-  return getDateKey(date);
-};
-
-const formatDateLabel = (dateKey: string, view: HistoryView) => {
-  const date = new Date(`${dateKey}T00:00:00`);
-
-  if (view === "yearly") {
-    return String(date.getFullYear());
-  }
-
-  if (view === "monthly") {
-    return date.toLocaleDateString([], {
-      month: "short",
-      year: "numeric",
-    });
-  }
-
-  if (view === "weekly") {
-    return `Week of ${date.toLocaleDateString([], {
-      month: "short",
-      day: "numeric",
-    })}`;
-  }
 
   return date.toLocaleDateString([], {
     month: "short",
@@ -86,37 +57,28 @@ const formatAxisDateLabel = (dateKey: string) => {
   });
 };
 
-const getPeriodKey = (dateKey: string, view: HistoryView) => {
-  if (view === "yearly") {
-    return dateKey.slice(0, 4);
+const getViewWindowDays = (view: HistoryView) => {
+  if (view === "weekly") {
+    return 7;
   }
 
   if (view === "monthly") {
-    return dateKey.slice(0, 7);
-  }
-
-  if (view === "weekly") {
-    return getWeekKey(dateKey);
-  }
-
-  return dateKey;
-};
-
-const getViewWindowSize = (view: HistoryView) => {
-  if (view === "weekly") {
-    return 12;
-  }
-
-  if (view === "monthly") {
-    return 12;
+    return 30;
   }
 
   if (view === "yearly") {
-    return 5;
+    return 365;
   }
 
   return Number.POSITIVE_INFINITY;
 };
+
+const getDaysBetween = (startDate: string, endDate: string) =>
+  Math.round(
+    (new Date(`${endDate}T00:00:00`).getTime() -
+      new Date(`${startDate}T00:00:00`).getTime()) /
+      86_400_000,
+  );
 
 const formatCompactCurrency = (value: number) => {
   const sign = value < 0 ? "-" : "";
@@ -150,19 +112,22 @@ export function NetWorthHistorySection({
     const sortedSnapshots = [...snapshots].sort((first, second) =>
       first.date.localeCompare(second.date),
     );
-    const groupedSnapshots = new Map<string, NetWorthSnapshot>();
 
-    sortedSnapshots.forEach((snapshot) => {
-      groupedSnapshots.set(getPeriodKey(snapshot.date, historyView), snapshot);
-    });
-
-    return [...groupedSnapshots.values()].map((snapshot) => ({
+    return sortedSnapshots.map((snapshot) => ({
       ...getSnapshotTotals(snapshot),
       date: snapshot.date,
-      label: formatDateLabel(snapshot.date, historyView),
+      label: formatDateLabel(snapshot.date),
     }));
-  }, [historyView, snapshots]);
-  const visibleTrendPoints = trendPoints.slice(-getViewWindowSize(historyView));
+  }, [snapshots]);
+  const latestTrendPoint = trendPoints[trendPoints.length - 1];
+  const viewWindowDays = getViewWindowDays(historyView);
+  const visibleTrendPoints =
+    historyView === "all" || !latestTrendPoint
+      ? trendPoints
+      : trendPoints.filter(
+          (point) =>
+            getDaysBetween(point.date, latestTrendPoint.date) <= viewWindowDays,
+        );
   const firstPoint = visibleTrendPoints[0];
   const latestPoint = visibleTrendPoints[visibleTrendPoints.length - 1];
   const trendDelta =
@@ -270,17 +235,19 @@ export function NetWorthHistorySection({
                 {latestPoint ? formatCurrency(latestPoint.netWorth) : "$0"}
               </p>
             </div>
-            <div className="text-right">
-              <p className={metricLabel}>Change</p>
-              <p
-                className={`mt-2 text-xl font-semibold ${
-                  trendDelta >= 0 ? "text-emerald-300" : "text-rose-300"
-                }`}
-              >
-                {trendDelta >= 0 ? "+" : ""}
-                {formatCurrency(trendDelta)}
-              </p>
-            </div>
+            {historyView !== "all" ? (
+              <div className="text-right">
+                <p className={metricLabel}>Change</p>
+                <p
+                  className={`mt-2 text-xl font-semibold ${
+                    trendDelta >= 0 ? "text-emerald-300" : "text-rose-300"
+                  }`}
+                >
+                  {trendDelta >= 0 ? "+" : ""}
+                  {formatCurrency(trendDelta)}
+                </p>
+              </div>
+            ) : null}
           </div>
 
           <div className="mt-6">
@@ -429,8 +396,7 @@ export function NetWorthHistorySection({
           </div>
           <p className="mt-5 text-sm leading-6 text-neutral-500">
             Each day keeps the latest balances you entered. Weekly, monthly, and
-            yearly views roll those tracked days up to the latest point in each
-            period.
+            yearly views show tracked days inside that date range.
           </p>
         </aside>
       </div>

@@ -55,6 +55,25 @@ export type MonthlyActual = {
   contributions: number;
 };
 
+export type TransactionCategoryType =
+  | "budget"
+  | "income"
+  | "transfer"
+  | "debtPayment"
+  | "contribution"
+  | "uncategorized";
+
+export type Transaction = {
+  id: string;
+  date: string;
+  description: string;
+  amount: number;
+  categoryType: TransactionCategoryType;
+  budgetId: string;
+  accountId: string;
+  notes: string;
+};
+
 export type NetWorthSnapshot = {
   date: string;
   accountBalances: Record<string, number>;
@@ -73,6 +92,7 @@ export type SavedBudgetState = {
   investmentContributions: InvestmentContributions;
   contributionReturns: ContributionReturns;
   monthlyActuals: MonthlyActual[];
+  transactions: Transaction[];
   netWorthSnapshots: NetWorthSnapshot[];
   completedActions: string[];
 };
