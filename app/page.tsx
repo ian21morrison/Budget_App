@@ -585,18 +585,22 @@ export default function Home() {
     ],
   );
 
-  const handleNavClick = (item: string) => {
+  const scrollToNavTarget = (activeItem: string, targetId: string) => {
     if (pendingNavTimerRef.current) {
       window.clearTimeout(pendingNavTimerRef.current);
     }
 
-    pendingNavItemRef.current = item;
-    setActiveNav(item);
-    scrollToSection(getNavItemId(item));
+    pendingNavItemRef.current = activeItem;
+    setActiveNav(activeItem);
+    scrollToSection(targetId);
     pendingNavTimerRef.current = window.setTimeout(() => {
       pendingNavItemRef.current = null;
       pendingNavTimerRef.current = null;
     }, 700);
+  };
+
+  const handleNavClick = (item: string) => {
+    scrollToNavTarget(item, getNavItemId(item));
   };
 
   const toggleNavGroup = (item: string) => {
@@ -608,8 +612,7 @@ export default function Home() {
   };
 
   const handleNavChildClick = (parentItem: string, childId: string) => {
-    setActiveNav(parentItem);
-    scrollToSection(childId);
+    scrollToNavTarget(parentItem, childId);
   };
 
   const updateAccount = (
