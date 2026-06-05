@@ -16,6 +16,7 @@ import { DebtsSection } from "@/components/DebtsSection";
 import { FinancialOverview } from "@/components/FinancialOverview";
 import { MonthlyActualsSection } from "@/components/MonthlyActualsSection";
 import { NetWorthHistorySection } from "@/components/NetWorthHistorySection";
+import { RecurringBillsSection } from "@/components/RecurringBillsSection";
 import { RetirementProjectionSection } from "@/components/RetirementProjectionSection";
 import { TransactionsSection } from "@/components/TransactionsSection";
 import {
@@ -40,6 +41,7 @@ import {
   getAvailableContributionAccounts,
   getContributionAccounts,
 } from "@/lib/calculations/budget";
+import { calculateRecurringBillsSummary } from "@/lib/calculations/recurringBills";
 import { defaultReturnForAccount } from "@/lib/calculations/returns";
 import { formatCurrency } from "@/lib/formatting";
 import { calculateRetirementProjection } from "@/lib/projections/retirement";
@@ -56,8 +58,10 @@ import {
   debtSeed,
   getCurrentDateKey,
   getCurrentMonthKey,
+  getDefaultNextPaycheckDate,
   investmentContributionSeed,
   navItems,
+  recurringBillSeed,
   retirementSeed,
 } from "@/lib/storage/defaults";
 import {
@@ -75,6 +79,7 @@ import type {
   InvestmentContributions,
   MonthlyActual,
   NetWorthSnapshot,
+  RecurringBill,
   RetirementPlan,
   SavedBudgetState,
   Transaction,
@@ -102,6 +107,7 @@ const navGroups = [
     label: "Spending Plan",
     children: [
       { label: "Budget", id: "budget" },
+      { label: "Recurring Bills", id: "recurring-bills" },
       { label: "Actuals", id: "actuals" },
       { label: "Transactions", id: "transactions" },
     ],
@@ -184,6 +190,12 @@ export default function Home() {
   const [budgets, setBudgets] = useState(defaultBudgetState.budgets);
   const [debts, setDebts] = useState(defaultBudgetState.debts);
   const [goals, setGoals] = useState(defaultBudgetState.goals);
+  const [recurringBills, setRecurringBills] = useState(
+    defaultBudgetState.recurringBills,
+  );
+  const [nextPaycheckDate, setNextPaycheckDate] = useState(
+    defaultBudgetState.nextPaycheckDate,
+  );
   const [monthlyIncome, setMonthlyIncome] = useState(
     defaultBudgetState.monthlyIncome,
   );
@@ -234,6 +246,8 @@ export default function Home() {
         setBudgets(savedState.budgets);
         setDebts(savedState.debts);
         setGoals(savedState.goals);
+        setRecurringBills(savedState.recurringBills);
+        setNextPaycheckDate(savedState.nextPaycheckDate);
         setMonthlyIncome(savedState.monthlyIncome);
         setRetirementPlan(savedState.retirementPlan);
         setInvestmentContributions(savedState.investmentContributions);
@@ -315,6 +329,8 @@ export default function Home() {
       budgets,
       debts,
       goals,
+      recurringBills,
+      nextPaycheckDate,
       monthlyIncome,
       retirementPlan,
       investmentContributions,
@@ -329,6 +345,8 @@ export default function Home() {
       budgets,
       debts,
       goals,
+      recurringBills,
+      nextPaycheckDate,
       monthlyIncome,
       retirementPlan,
       investmentContributions,
@@ -349,6 +367,8 @@ export default function Home() {
     setBudgets(stateToRestore.budgets);
     setDebts(stateToRestore.debts);
     setGoals(stateToRestore.goals);
+    setRecurringBills(stateToRestore.recurringBills);
+    setNextPaycheckDate(stateToRestore.nextPaycheckDate);
     setMonthlyIncome(stateToRestore.monthlyIncome);
     setRetirementPlan(stateToRestore.retirementPlan);
     setInvestmentContributions(stateToRestore.investmentContributions);
@@ -534,6 +554,15 @@ export default function Home() {
         totals,
       }),
     [selectedMonthlyActual, totals],
+  );
+
+  const recurringBillsSummary = useMemo(
+    () =>
+      calculateRecurringBillsSummary({
+        recurringBills,
+        nextPaycheckDate,
+      }),
+    [nextPaycheckDate, recurringBills],
   );
 
   const transactionMonthlyActual = useMemo(
@@ -745,6 +774,59 @@ export default function Home() {
 
     setBudgets(nextBudgets);
     saveState({ budgets: nextBudgets });
+  };
+
+  const updateRecurringBill = (
+    billId: string,
+    field:
+      | "name"
+      | "category"
+      | "dueDate"
+      | "cadence"
+      | "expectedAmount"
+      | "isPaid"
+      | "autopay",
+    value: string | number | boolean,
+  ) => {
+    const nextRecurringBills = recurringBills.map((bill) =>
+      bill.id === billId ? { ...bill, [field]: value } : bill,
+    );
+
+    setRecurringBills(nextRecurringBills);
+    saveState({ recurringBills: nextRecurringBills });
+  };
+
+  const addRecurringBill = () => {
+    const nextRecurringBills: RecurringBill[] = [
+      ...recurringBills,
+      {
+        id: createId("bill"),
+        name: "New recurring bill",
+        category: "Bills",
+        dueDate: getCurrentDateKey(),
+        cadence: "monthly",
+        expectedAmount: 0,
+        isPaid: false,
+        autopay: false,
+      },
+    ];
+
+    setRecurringBills(nextRecurringBills);
+    saveState({ recurringBills: nextRecurringBills });
+  };
+
+  const deleteRecurringBill = (billId: string) => {
+    const nextRecurringBills = recurringBills.filter((bill) => bill.id !== billId);
+
+    setRecurringBills(nextRecurringBills);
+    saveState({ recurringBills: nextRecurringBills });
+  };
+
+  const updateNextPaycheckDate = (date: string) => {
+    const nextDate = date || getDefaultNextPaycheckDate();
+
+    setNextPaycheckDate(nextDate);
+    saveState({ nextPaycheckDate: nextDate });
   };
 
   const updateDebt = (
@@ -1142,6 +1224,17 @@ export default function Home() {
     setBudgets(budgetSeed);
     setMonthlyIncome(DEFAULT_MONTHLY_INCOME);
     saveState({ budgets: budgetSeed, monthlyIncome: DEFAULT_MONTHLY_INCOME });
+  };
+
+  const resetRecurringBills = () => {
+    const nextPaycheck = getDefaultNextPaycheckDate();
+
+    setRecurringBills(recurringBillSeed);
+    setNextPaycheckDate(nextPaycheck);
+    saveState({
+      recurringBills: recurringBillSeed,
+      nextPaycheckDate: nextPaycheck,
+    });
   };
 
   const updateGoal = (
@@ -1570,6 +1663,7 @@ export default function Home() {
           >
             <FinancialOverview
               netWorthSnapshots={netWorthSnapshots}
+              recurringBillsSummary={recurringBillsSummary}
               retirementPlan={retirementPlan}
               retirementProjection={retirementProjection}
               totals={totals}
@@ -1637,6 +1731,18 @@ export default function Home() {
                     selectNumberInput={selectNumberInput}
                   />
                 }
+              />
+
+              <RecurringBillsSection
+                nextPaycheckDate={nextPaycheckDate}
+                recurringBills={recurringBills}
+                summary={recurringBillsSummary}
+                onAddBill={addRecurringBill}
+                onDeleteBill={deleteRecurringBill}
+                onResetBills={resetRecurringBills}
+                onUpdateBill={updateRecurringBill}
+                onUpdateNextPaycheckDate={updateNextPaycheckDate}
+                selectNumberInput={selectNumberInput}
               />
 
               <MonthlyActualsSection

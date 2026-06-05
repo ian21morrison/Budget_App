@@ -11,7 +11,9 @@ import {
   createMonthlyActualFromPlan,
   createNetWorthSnapshot,
   debtSeed,
+  getDefaultNextPaycheckDate,
   investmentContributionSeed,
+  recurringBillSeed,
   retirementSeed,
 } from "@/lib/storage/defaults";
 import type {
@@ -24,6 +26,8 @@ import type {
   InvestmentContributions,
   MonthlyActual,
   NetWorthSnapshot,
+  RecurringBill,
+  RecurringBillCadence,
   RetirementPlan,
   SavedBudgetState,
   Transaction,
@@ -37,6 +41,8 @@ const BACKUP_STATE_KEYS = [
   "budgets",
   "debts",
   "goals",
+  "recurringBills",
+  "nextPaycheckDate",
   "monthlyIncome",
   "retirementPlan",
   "investmentContributions",
@@ -111,6 +117,29 @@ const transactionCategoryTypeValue = (
   ].includes(normalizedValue)
     ? (normalizedValue as TransactionCategoryType)
     : fallback;
+};
+
+const recurringBillCadenceValue = (
+  value: unknown,
+  fallback: RecurringBillCadence,
+): RecurringBillCadence => {
+  const normalizedValue = typeof value === "string" ? value : "";
+
+  return ["weekly", "biweekly", "monthly", "quarterly", "annual"].includes(
+    normalizedValue,
+  )
+    ? (normalizedValue as RecurringBillCadence)
+    : fallback;
+};
+
+const dateValue = (value: unknown, fallback: string) => {
+  if (typeof value !== "string") {
+    return fallback;
+  }
+
+  const date = new Date(`${value}T00:00:00`);
+
+  return Number.isNaN(date.getTime()) ? fallback : value.slice(0, 10);
 };
 
 const inferAccountType = (account: Record<string, unknown>, fallback: Account) => {
@@ -208,6 +237,39 @@ export const normalizeGoals = (savedGoals: unknown): Goal[] => {
       status: textValue(goal.status, fallback.status),
     };
   });
+};
+
+export const normalizeRecurringBills = (
+  savedRecurringBills: unknown,
+): RecurringBill[] => {
+  if (!Array.isArray(savedRecurringBills)) {
+    return recurringBillSeed.map((bill) => ({ ...bill }));
+  }
+
+  const normalizedBills = savedRecurringBills
+    .filter(isRecord)
+    .map((bill, index) => {
+      const fallback = recurringBillSeed[index % recurringBillSeed.length];
+      const name = textValue(bill.name ?? bill.label, fallback.name);
+
+      return {
+        id: textValue(bill.id, slugFromText("bill", name)),
+        name,
+        category: textValue(bill.category, fallback.category),
+        dueDate: dateValue(bill.dueDate, fallback.dueDate),
+        cadence: recurringBillCadenceValue(bill.cadence, fallback.cadence),
+        expectedAmount: Math.max(
+          0,
+          numberValue(bill.expectedAmount ?? bill.amount, fallback.expectedAmount),
+        ),
+        isPaid: Boolean(bill.isPaid ?? bill.paid),
+        autopay: Boolean(bill.autopay),
+      };
+    });
+
+  return normalizedBills.length > 0
+    ? normalizedBills
+    : recurringBillSeed.map((bill) => ({ ...bill }));
 };
 
 export const normalizeRetirementPlan = (
@@ -410,6 +472,8 @@ export const createDefaultBudgetState = (): SavedBudgetState => ({
   budgets: budgetSeed.map((budget) => ({ ...budget })),
   debts: debtSeed.map((debt) => ({ ...debt })),
   goals: actionSeed.map((goal) => ({ ...goal })),
+  recurringBills: recurringBillSeed.map((bill) => ({ ...bill })),
+  nextPaycheckDate: getDefaultNextPaycheckDate(),
   monthlyIncome: DEFAULT_MONTHLY_INCOME,
   retirementPlan: { ...retirementSeed },
   investmentContributions: { ...investmentContributionSeed },
@@ -448,6 +512,11 @@ export const normalizeSavedBudgetState = (
     budgets: normalizeBudgets(parsedState.budgets),
     debts,
     goals: normalizeGoals(parsedState.goals),
+    recurringBills: normalizeRecurringBills(parsedState.recurringBills),
+    nextPaycheckDate: dateValue(
+      parsedState.nextPaycheckDate,
+      getDefaultNextPaycheckDate(),
+    ),
     monthlyIncome:
       typeof parsedState.monthlyIncome === "number"
         ? parsedState.monthlyIncome

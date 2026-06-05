@@ -17,6 +17,24 @@ export type Budget = {
   color: string;
 };
 
+export type RecurringBillCadence =
+  | "weekly"
+  | "biweekly"
+  | "monthly"
+  | "quarterly"
+  | "annual";
+
+export type RecurringBill = {
+  id: string;
+  name: string;
+  category: string;
+  dueDate: string;
+  cadence: RecurringBillCadence;
+  expectedAmount: number;
+  isPaid: boolean;
+  autopay: boolean;
+};
+
 export type Debt = {
   id: string;
   name: string;
@@ -87,6 +105,8 @@ export type SavedBudgetState = {
   budgets: Budget[];
   debts: Debt[];
   goals: Goal[];
+  recurringBills: RecurringBill[];
+  nextPaycheckDate: string;
   monthlyIncome: number;
   retirementPlan: RetirementPlan;
   investmentContributions: InvestmentContributions;
@@ -120,6 +140,21 @@ export type BudgetTotals = {
   cash: number;
   invested: number;
   contributionBalance: number;
+};
+
+export type RecurringBillsSummary = {
+  nextPaycheckDate: string;
+  unpaidDueBeforePaycheck: RecurringBill[];
+  paidDueBeforePaycheck: RecurringBill[];
+  upcomingAfterPaycheck: RecurringBill[];
+  totalDueBeforePaycheck: number;
+  totalPaidBeforePaycheck: number;
+  monthlyExpectedTotal: number;
+  unpaidTotal: number;
+  paidTotal: number;
+  overdueTotal: number;
+  dueTodayTotal: number;
+  nextUnpaidBill: RecurringBill | null;
 };
 
 export type RetirementProjectionAccount = {

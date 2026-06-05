@@ -5,6 +5,7 @@ import type {
   Goal,
   MonthlyActual,
   NetWorthSnapshot,
+  RecurringBill,
   RetirementPlan,
 } from "@/types";
 
@@ -15,6 +16,19 @@ export const navItems = [
   "Long-Term Outlook",
   "Goals",
 ];
+
+export const getCurrentMonthKey = (date = new Date()) =>
+  date.toISOString().slice(0, 7);
+
+export const getCurrentDateKey = (date = new Date()) =>
+  date.toISOString().slice(0, 10);
+
+export const getDefaultNextPaycheckDate = (date = new Date()) => {
+  const nextPaycheck = new Date(date);
+  nextPaycheck.setDate(nextPaycheck.getDate() + 14);
+
+  return nextPaycheck.toISOString().slice(0, 10);
+};
 
 export const accountSeed: Account[] = [
   {
@@ -93,6 +107,49 @@ export const budgetSeed: Budget[] = [
     amount: 300,
     detail: "Anything variable that needs a little room",
     color: "bg-rose-300",
+  },
+];
+
+export const recurringBillSeed: RecurringBill[] = [
+  {
+    id: "rent",
+    name: "Rent",
+    category: "Housing",
+    dueDate: `${getCurrentMonthKey()}-01`,
+    cadence: "monthly",
+    expectedAmount: 1900,
+    isPaid: false,
+    autopay: false,
+  },
+  {
+    id: "internet",
+    name: "Internet",
+    category: "Utilities",
+    dueDate: `${getCurrentMonthKey()}-10`,
+    cadence: "monthly",
+    expectedAmount: 70,
+    isPaid: false,
+    autopay: true,
+  },
+  {
+    id: "phone",
+    name: "Phone",
+    category: "Utilities",
+    dueDate: `${getCurrentMonthKey()}-18`,
+    cadence: "monthly",
+    expectedAmount: 85,
+    isPaid: false,
+    autopay: true,
+  },
+  {
+    id: "streaming",
+    name: "Streaming",
+    category: "Subscriptions",
+    dueDate: `${getCurrentMonthKey()}-22`,
+    cadence: "monthly",
+    expectedAmount: 25,
+    isPaid: false,
+    autopay: true,
   },
 ];
 
@@ -178,12 +235,6 @@ export const STORAGE_KEY = "ian-capital-budget-state-v1";
 export const DEFAULT_BRAND_NAME = "Crow's Nest";
 export const DEFAULT_DASHBOARD_TITLE = "Portfolio Lookout";
 export const DEFAULT_MONTHLY_INCOME = 6150;
-
-export const getCurrentMonthKey = (date = new Date()) =>
-  date.toISOString().slice(0, 7);
-
-export const getCurrentDateKey = (date = new Date()) =>
-  date.toISOString().slice(0, 10);
 
 export const createMonthlyActualFromPlan = (
   month = getCurrentMonthKey(),
