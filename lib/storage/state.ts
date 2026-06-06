@@ -18,6 +18,9 @@ import {
 } from "@/lib/storage/defaults";
 import type {
   Account,
+  AccountAssetAllocation,
+  AccountPurpose,
+  AccountTaxTreatment,
   AccountType,
   Budget,
   ContributionReturns,
@@ -101,6 +104,61 @@ const accountTypeValue = (value: unknown, fallback: AccountType): AccountType =>
     : fallback;
 };
 
+const accountTaxTreatmentValue = (
+  value: unknown,
+  fallback: AccountTaxTreatment,
+): AccountTaxTreatment => {
+  const normalizedValue = typeof value === "string" ? value : "";
+
+  return [
+    "taxable",
+    "traditionalRetirement",
+    "rothRetirement",
+    "hsa",
+    "education",
+    "other",
+  ].includes(normalizedValue)
+    ? (normalizedValue as AccountTaxTreatment)
+    : fallback;
+};
+
+const accountPurposeValue = (
+  value: unknown,
+  fallback: AccountPurpose,
+): AccountPurpose => {
+  const normalizedValue = typeof value === "string" ? value : "";
+
+  return [
+    "operating",
+    "emergency",
+    "retirement",
+    "taxableInvesting",
+    "shortTermSavings",
+    "other",
+  ].includes(normalizedValue)
+    ? (normalizedValue as AccountPurpose)
+    : fallback;
+};
+
+const normalizeAllocation = (
+  savedAllocation: unknown,
+  fallback: AccountAssetAllocation,
+): AccountAssetAllocation => {
+  if (!isRecord(savedAllocation)) {
+    return fallback;
+  }
+
+  return {
+    stocks: numberValue(savedAllocation.stocks, fallback.stocks),
+    bonds: numberValue(savedAllocation.bonds, fallback.bonds),
+    cash: numberValue(savedAllocation.cash, fallback.cash),
+    alternatives: numberValue(
+      savedAllocation.alternatives,
+      fallback.alternatives,
+    ),
+  };
+};
+
 const transactionCategoryTypeValue = (
   value: unknown,
   fallback: TransactionCategoryType,
@@ -159,6 +217,60 @@ const inferAccountType = (account: Record<string, unknown>, fallback: Account) =
   return fallback.type;
 };
 
+const inferTaxTreatment = (
+  account: Record<string, unknown>,
+  fallback: Account,
+): AccountTaxTreatment => {
+  const name = textValue(account.name, fallback.name).toLowerCase();
+  const institution = textValue(account.institution, fallback.institution).toLowerCase();
+
+  if (name.includes("roth")) {
+    return "rothRetirement";
+  }
+
+  if (
+    name.includes("401") ||
+    name.includes("403") ||
+    name.includes("ira") ||
+    institution.includes("retirement")
+  ) {
+    return "traditionalRetirement";
+  }
+
+  return fallback.taxTreatment;
+};
+
+const inferAccountPurpose = (
+  account: Record<string, unknown>,
+  fallback: Account,
+): AccountPurpose => {
+  const name = textValue(account.name, fallback.name).toLowerCase();
+  const institution = textValue(account.institution, fallback.institution).toLowerCase();
+
+  if (
+    name.includes("hys") ||
+    name.includes("emergency") ||
+    institution.includes("emergency") ||
+    institution.includes("reserve")
+  ) {
+    return "emergency";
+  }
+
+  if (name.includes("checking") || institution.includes("operating")) {
+    return "operating";
+  }
+
+  if (
+    name.includes("ira") ||
+    name.includes("401") ||
+    institution.includes("retirement")
+  ) {
+    return "retirement";
+  }
+
+  return fallback.purpose;
+};
+
 export const normalizeAccounts = (savedAccounts: unknown): Account[] => {
   if (!Array.isArray(savedAccounts)) {
     return accountSeed;
@@ -174,6 +286,32 @@ export const normalizeAccounts = (savedAccounts: unknown): Account[] => {
       institution: textValue(account.institution, fallback.institution),
       balance: numberValue(account.balance, fallback.balance),
       type: accountTypeValue(account.type, inferAccountType(account, fallback)),
+      taxTreatment: accountTaxTreatmentValue(
+        account.taxTreatment,
+        inferTaxTreatment(account, fallback),
+      ),
+      purpose: accountPurposeValue(
+        account.purpose,
+        inferAccountPurpose(account, fallback),
+      ),
+      allocation: normalizeAllocation(account.allocation, fallback.allocation),
+      emergencyFundTarget: numberValue(
+        account.emergencyFundTarget,
+        fallback.emergencyFundTarget,
+      ),
+      annualContributionLimit: numberValue(
+        account.annualContributionLimit,
+        fallback.annualContributionLimit,
+      ),
+      yearToDateContribution: numberValue(
+        account.yearToDateContribution,
+        fallback.yearToDateContribution,
+      ),
+      projectedAnnualIncomeRate: numberValue(
+        account.projectedAnnualIncomeRate,
+        fallback.projectedAnnualIncomeRate,
+      ),
+      notes: textValue(account.notes, fallback.notes),
       accent: textValue(account.accent, fallback.accent),
     };
   });

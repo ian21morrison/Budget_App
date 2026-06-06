@@ -1,11 +1,42 @@
 export type AccountType = "cash" | "invested";
 
+export type AccountTaxTreatment =
+  | "taxable"
+  | "traditionalRetirement"
+  | "rothRetirement"
+  | "hsa"
+  | "education"
+  | "other";
+
+export type AccountPurpose =
+  | "operating"
+  | "emergency"
+  | "retirement"
+  | "taxableInvesting"
+  | "shortTermSavings"
+  | "other";
+
+export type AccountAssetAllocation = {
+  stocks: number;
+  bonds: number;
+  cash: number;
+  alternatives: number;
+};
+
 export type Account = {
   id: string;
   name: string;
   institution: string;
   balance: number;
   type: AccountType;
+  taxTreatment: AccountTaxTreatment;
+  purpose: AccountPurpose;
+  allocation: AccountAssetAllocation;
+  emergencyFundTarget: number;
+  annualContributionLimit: number;
+  yearToDateContribution: number;
+  projectedAnnualIncomeRate: number;
+  notes: string;
   accent: string;
 };
 

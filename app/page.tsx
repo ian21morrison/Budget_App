@@ -80,6 +80,10 @@ import {
 import { parseTransactionCsv } from "@/lib/transactions/csv";
 import type {
   Account,
+  AccountAssetAllocation,
+  AccountPurpose,
+  AccountTaxTreatment,
+  AccountType,
   ContributionReturns,
   InvestmentContributions,
   MonthlyActual,
@@ -204,9 +208,7 @@ const isInterfaceTheme = (value: string | null): value is InterfaceTheme =>
 
 export default function Home() {
   const [activeNav, setActiveNav] = useState(navItems[0]);
-  const [openNavGroups, setOpenNavGroups] = useState<string[]>([
-    "Spending Plan",
-  ]);
+  const [openNavGroups, setOpenNavGroups] = useState<string[]>([]);
   const [interfaceTheme, setInterfaceTheme] =
     useState<InterfaceTheme>("light");
   const [isEditingBudget, setIsEditingBudget] = useState(false);
@@ -710,8 +712,20 @@ export default function Home() {
 
   const updateAccount = (
     accountId: string,
-    field: "name" | "institution" | "balance" | "type" | "accent",
-    value: string | number,
+    field:
+      | "name"
+      | "institution"
+      | "balance"
+      | "type"
+      | "taxTreatment"
+      | "purpose"
+      | "emergencyFundTarget"
+      | "annualContributionLimit"
+      | "yearToDateContribution"
+      | "projectedAnnualIncomeRate"
+      | "notes"
+      | "accent",
+    value: string | number | AccountType | AccountTaxTreatment | AccountPurpose,
   ) => {
     const nextAccounts = accounts.map((account) =>
       account.id === accountId ? { ...account, [field]: value } : account,
@@ -725,6 +739,27 @@ export default function Home() {
     });
   };
 
+  const updateAccountAllocation = (
+    accountId: string,
+    field: keyof AccountAssetAllocation,
+    value: number,
+  ) => {
+    const nextAccounts = accounts.map((account) =>
+      account.id === accountId
+        ? {
+            ...account,
+            allocation: {
+              ...account.allocation,
+              [field]: value,
+            },
+          }
+        : account,
+    );
+
+    setAccounts(nextAccounts);
+    saveState({ accounts: nextAccounts });
+  };
+
   const addAccount = () => {
     const accountId = createId("account");
     const nextAccounts: Account[] = [
@@ -735,6 +770,19 @@ export default function Home() {
         institution: "Account notes",
         balance: 0,
         type: "cash",
+        taxTreatment: "taxable",
+        purpose: "operating",
+        allocation: {
+          stocks: 0,
+          bonds: 0,
+          cash: 100,
+          alternatives: 0,
+        },
+        emergencyFundTarget: 0,
+        annualContributionLimit: 0,
+        yearToDateContribution: 0,
+        projectedAnnualIncomeRate: 0,
+        notes: "",
         accent: colorForIndex(accounts.length),
       },
     ];
@@ -761,6 +809,19 @@ export default function Home() {
         institution: "Investment account notes",
         balance: 0,
         type: "invested",
+        taxTreatment: "taxable",
+        purpose: "taxableInvesting",
+        allocation: {
+          stocks: 80,
+          bonds: 10,
+          cash: 5,
+          alternatives: 5,
+        },
+        emergencyFundTarget: 0,
+        annualContributionLimit: 0,
+        yearToDateContribution: 0,
+        projectedAnnualIncomeRate: 2,
+        notes: "",
         accent: colorForIndex(accounts.length),
       },
     ];
@@ -1872,6 +1933,7 @@ export default function Home() {
                   onAddAccount={addAccount}
                   onResetAccounts={resetAccounts}
                   onUpdateAccount={updateAccount}
+                  onUpdateAccountAllocation={updateAccountAllocation}
                   onUpdateContributionReturn={updateContributionReturn}
                   onDeleteAccount={deleteAccount}
                   renderColorPicker={renderColorPicker}
