@@ -119,41 +119,19 @@ export function RecurringBillsSection({
             paid status.
           </p>
         </div>
-        <div className="grid auto-rows-fr gap-2 sm:grid-cols-2 xl:min-w-[680px] xl:grid-cols-4">
-          <div className={`${nestedSurface} h-full px-3 py-2`}>
-            <p className={metricLabel}>Before paycheck</p>
-            <p className={`${metricValue} text-lg text-amber-200`}>
-              {formatCurrency(summary.totalDueBeforePaycheck)}
-            </p>
-          </div>
-          <div className={`${nestedSurface} h-full px-3 py-2`}>
-            <p className={metricLabel}>Unpaid total</p>
-            <p className={`${metricValue} text-lg`}>
-              {formatCurrency(summary.unpaidTotal)}
-            </p>
-          </div>
-          <div className={`${nestedSurface} h-full px-3 py-2`}>
-            <p className={metricLabel}>Overdue</p>
-            <p
-              className={`${metricValue} text-lg ${
-                summary.overdueTotal > 0 ? "text-rose-300" : ""
-              }`}
-            >
-              {formatCurrency(summary.overdueTotal)}
-            </p>
-          </div>
-          <div className={`${nestedSurface} h-full px-3 py-2`}>
-            <p className={metricLabel}>Monthly expected</p>
-            <p className={`${metricValue} text-lg`}>
-              {formatCurrency(summary.monthlyExpectedTotal)}
-            </p>
-          </div>
+        <div className="flex flex-wrap gap-2">
+          <button type="button" onClick={onAddBill} className={primaryButton}>
+            Add bill
+          </button>
+          <button type="button" onClick={onResetBills} className={secondaryButton}>
+            Reset
+          </button>
         </div>
       </div>
 
-      <div className="grid gap-5 p-5 xl:grid-cols-[300px_minmax(0,1fr)]">
-        <div className="space-y-4">
-          <label className="block">
+      <div className="border-b border-white/10 p-5">
+        <div className="grid gap-3 lg:grid-cols-[220px_minmax(190px,1.2fr)_minmax(190px,1fr)] xl:grid-cols-[220px_minmax(210px,1.25fr)_repeat(4,minmax(140px,1fr))]">
+          <label className={`${nestedSurface} block px-3 py-2.5`}>
             <span className="text-sm text-neutral-300">
               Next paycheck date
             </span>
@@ -165,7 +143,7 @@ export function RecurringBillsSection({
             />
           </label>
 
-          <div className={`${subtleSurface} p-4`}>
+          <div className={`${subtleSurface} p-4 lg:col-span-2 xl:col-span-1`}>
             <p className={metricLabel}>Cash leaving before paycheck</p>
             <p className="mt-2 text-3xl font-semibold tracking-tight text-amber-200">
               {formatCurrency(summary.totalDueBeforePaycheck)}
@@ -177,63 +155,74 @@ export function RecurringBillsSection({
             </p>
           </div>
 
-          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
-            <div className={`${nestedSurface} px-3 py-2`}>
-              <p className={metricLabel}>Already paid</p>
-              <p className={`${metricValue} text-xl text-emerald-300`}>
-                {formatCurrency(summary.totalPaidBeforePaycheck)}
-              </p>
-              <p className="mt-1 text-xs text-neutral-500">
-                Due before paycheck
-              </p>
-            </div>
-            <div className={`${nestedSurface} px-3 py-2`}>
-              <p className={metricLabel}>Due today</p>
-              <p
-                className={`${metricValue} text-xl ${
-                  summary.dueTodayTotal > 0 ? "text-amber-200" : ""
-                }`}
-              >
-                {formatCurrency(summary.dueTodayTotal)}
-              </p>
-            </div>
-          </div>
-
-          <div className={`${subtleSurface} p-4`}>
-            <p className="text-sm font-semibold text-neutral-100">
-              Next unpaid bill
+          <div className={`${nestedSurface} px-3 py-2.5`}>
+            <p className={metricLabel}>Unpaid total</p>
+            <p className={`${metricValue} text-xl`}>
+              {formatCurrency(summary.unpaidTotal)}
             </p>
-            {summary.nextUnpaidBill ? (
-              <div className="mt-3 flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <p className="truncate text-sm text-neutral-300">
-                    {summary.nextUnpaidBill.name}
-                  </p>
-                  <p className="mt-1 text-xs text-neutral-500">
-                    Due {formatDateLabel(summary.nextUnpaidBill.dueDate)}
-                  </p>
-                </div>
-                <p className="shrink-0 font-semibold text-neutral-100">
-                  {formatCurrency(summary.nextUnpaidBill.expectedAmount)}
-                </p>
-              </div>
-            ) : (
-              <p className="mt-3 text-sm text-neutral-500">
-                All scheduled items are marked paid.
-              </p>
-            )}
           </div>
 
-          <div className="flex flex-wrap gap-2">
-            <button type="button" onClick={onAddBill} className={primaryButton}>
-              Add bill
-            </button>
-            <button type="button" onClick={onResetBills} className={secondaryButton}>
-              Reset
-            </button>
+          <div className={`${nestedSurface} px-3 py-2.5`}>
+            <p className={metricLabel}>Overdue</p>
+            <p
+              className={`${metricValue} text-xl ${
+                summary.overdueTotal > 0 ? "text-rose-300" : ""
+              }`}
+            >
+              {formatCurrency(summary.overdueTotal)}
+            </p>
+          </div>
+
+          <div className={`${nestedSurface} px-3 py-2.5`}>
+            <p className={metricLabel}>Due today</p>
+            <p
+              className={`${metricValue} text-xl ${
+                summary.dueTodayTotal > 0 ? "text-amber-200" : ""
+              }`}
+            >
+              {formatCurrency(summary.dueTodayTotal)}
+            </p>
+            <p className="mt-1 text-xs text-neutral-500">
+              {formatCurrency(summary.totalPaidBeforePaycheck)} paid before
+              paycheck
+            </p>
+          </div>
+
+          <div className={`${nestedSurface} px-3 py-2.5`}>
+            <p className={metricLabel}>Monthly expected</p>
+            <p className={`${metricValue} text-xl`}>
+              {formatCurrency(summary.monthlyExpectedTotal)}
+            </p>
           </div>
         </div>
 
+        <div className={`${subtleSurface} mt-3 p-4`}>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="text-sm font-semibold text-neutral-100">
+                Next unpaid bill
+              </p>
+              {summary.nextUnpaidBill ? (
+                <p className="mt-1 text-sm text-neutral-400">
+                  {summary.nextUnpaidBill.name} is due{" "}
+                  {formatDateLabel(summary.nextUnpaidBill.dueDate)}.
+                </p>
+              ) : (
+                <p className="mt-1 text-sm text-neutral-500">
+                  All scheduled items are marked paid.
+                </p>
+              )}
+            </div>
+            {summary.nextUnpaidBill ? (
+              <p className="shrink-0 text-xl font-semibold tracking-tight text-neutral-50">
+                {formatCurrency(summary.nextUnpaidBill.expectedAmount)}
+              </p>
+            ) : null}
+          </div>
+        </div>
+      </div>
+
+      <div className="p-5">
         <div className="grid gap-3">
           {sortedBills.map((bill) => {
             const status = getBillStatus(bill, today);

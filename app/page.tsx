@@ -17,6 +17,7 @@ import { FinancialOverview } from "@/components/FinancialOverview";
 import { MonthlyActualsSection } from "@/components/MonthlyActualsSection";
 import { NetWorthHistorySection } from "@/components/NetWorthHistorySection";
 import { RecurringBillsSection } from "@/components/RecurringBillsSection";
+import { ReportSection } from "@/components/ReportSection";
 import { RetirementProjectionSection } from "@/components/RetirementProjectionSection";
 import { TransactionsSection } from "@/components/TransactionsSection";
 import {
@@ -42,6 +43,10 @@ import {
   getContributionAccounts,
 } from "@/lib/calculations/budget";
 import { calculateRecurringBillsSummary } from "@/lib/calculations/recurringBills";
+import {
+  createFinancialReport,
+  createFinancialReportCsv,
+} from "@/lib/calculations/reporting";
 import { defaultReturnForAccount } from "@/lib/calculations/returns";
 import { formatCurrency } from "@/lib/formatting";
 import { calculateRetirementProjection } from "@/lib/projections/retirement";
@@ -97,6 +102,25 @@ const getNavItemId = (item: string) =>
 
 const createId = (prefix: string) =>
   `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+
+const downloadFile = ({
+  contents,
+  fileName,
+  type,
+}: {
+  contents: string;
+  fileName: string;
+  type: string;
+}) => {
+  const blob = new Blob([contents], { type });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+
+  link.href = url;
+  link.download = fileName;
+  link.click();
+  URL.revokeObjectURL(url);
+};
 
 const navGroups = [
   {
@@ -437,17 +461,16 @@ export default function Home() {
 
   const exportData = () => {
     const backupJson = createBudgetBackupJson(getCurrentState());
-    const blob = new Blob([backupJson], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = createBudgetBackupFileName();
-    link.click();
-    URL.revokeObjectURL(url);
+
+    downloadFile({
+      contents: backupJson,
+      fileName: createBudgetBackupFileName(),
+      type: "application/json",
+    });
   };
 
   const generateReport = () => {
-    window.print();
+    scrollToSection("reporting");
   };
 
   const startImportData = () => {
@@ -613,6 +636,47 @@ export default function Home() {
       totals,
     ],
   );
+
+  const financialReport = useMemo(
+    () =>
+      createFinancialReport({
+        budgets,
+        debts,
+        monthlyActual: selectedMonthlyActual,
+        monthlyActualTotals,
+        monthlyIncome,
+        netWorthSnapshots,
+        retirementPlan,
+        retirementProjection,
+        selectedMonth: selectedActualMonth,
+        totals,
+      }),
+    [
+      budgets,
+      debts,
+      monthlyActualTotals,
+      monthlyIncome,
+      netWorthSnapshots,
+      retirementPlan,
+      retirementProjection,
+      selectedActualMonth,
+      selectedMonthlyActual,
+      totals,
+    ],
+  );
+
+  const downloadReportCsv = () => {
+    downloadFile({
+      contents: createFinancialReportCsv(financialReport),
+      fileName: `financial-report-${selectedActualMonth}.csv`,
+      type: "text/csv;charset=utf-8",
+    });
+  };
+
+  const exportReportPdf = () => {
+    scrollToSection("reporting");
+    window.setTimeout(() => window.print(), 150);
+  };
 
   const scrollToNavTarget = (activeItem: string, targetId: string) => {
     if (pendingNavTimerRef.current) {
@@ -1668,6 +1732,14 @@ export default function Home() {
               retirementProjection={retirementProjection}
               totals={totals}
             />
+
+            <div className="mt-5">
+              <ReportSection
+                report={financialReport}
+                onDownloadCsv={downloadReportCsv}
+                onExportPdf={exportReportPdf}
+              />
+            </div>
 
             <section id="spending-plan" className="mt-5 scroll-mt-24">
               <div className="mb-3 px-1">
