@@ -31,6 +31,7 @@ import type {
   NetWorthSnapshot,
   RecurringBill,
   RecurringBillCadence,
+  FinanceProfile,
   RetirementPlan,
   SavedBudgetState,
   Transaction,
@@ -39,6 +40,8 @@ import type {
 
 const BACKUP_APP_ID = "ian-capital-budget-app";
 const BACKUP_VERSION = 1;
+export const PROFILE_STORAGE_KEY = "financeAppProfiles";
+export const ACTIVE_PROFILE_STORAGE_KEY = "activeFinanceProfileId";
 const BACKUP_STATE_KEYS = [
   "accounts",
   "budgets",
@@ -67,6 +70,9 @@ type ImportBudgetBackupResult =
       ok: false;
       error: string;
     };
+
+const createId = (prefix: string) =>
+  `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 
 const slugFromText = (prefix: string, text: string) =>
   `${prefix}-${text
@@ -405,9 +411,7 @@ export const normalizeRecurringBills = (
       };
     });
 
-  return normalizedBills.length > 0
-    ? normalizedBills
-    : recurringBillSeed.map((bill) => ({ ...bill }));
+  return normalizedBills;
 };
 
 export const normalizeRetirementPlan = (
@@ -509,9 +513,7 @@ export const normalizeMonthlyActuals = (
       };
     });
 
-  return normalizedActuals.length > 0
-    ? normalizedActuals
-    : [createMonthlyActualFromPlan()];
+  return normalizedActuals;
 };
 
 export const normalizeTransactions = (
@@ -598,9 +600,7 @@ export const normalizeNetWorthSnapshots = (
     }))
     .sort((first, second) => first.date.localeCompare(second.date));
 
-  return normalizedSnapshots.length > 0
-    ? normalizedSnapshots
-    : [fallbackSnapshot];
+  return normalizedSnapshots;
 };
 
 export const createDefaultBudgetState = (): SavedBudgetState => ({
@@ -623,6 +623,30 @@ export const createDefaultBudgetState = (): SavedBudgetState => ({
   monthlyActuals: [createMonthlyActualFromPlan()],
   transactions: [],
   netWorthSnapshots: [createNetWorthSnapshot()],
+  completedActions: [],
+});
+
+export const createBlankBudgetState = (): SavedBudgetState => ({
+  brandName: DEFAULT_BRAND_NAME,
+  dashboardTitle: DEFAULT_DASHBOARD_TITLE,
+  accounts: [],
+  budgets: [],
+  debts: [],
+  goals: [],
+  recurringBills: [],
+  nextPaycheckDate: getDefaultNextPaycheckDate(),
+  monthlyIncome: 0,
+  retirementPlan: {
+    currentAge: 0,
+    targetAge: 0,
+    targetPortfolio: 0,
+    annualReturn: 0,
+  },
+  investmentContributions: {},
+  contributionReturns: {},
+  monthlyActuals: [],
+  transactions: [],
+  netWorthSnapshots: [],
   completedActions: [],
 });
 
@@ -679,6 +703,104 @@ export const normalizeSavedBudgetState = (
         )
       : [],
   };
+};
+
+const normalizeFinanceProfile = (
+  profile: unknown,
+  fallbackIndex: number,
+): FinanceProfile | null => {
+  if (!isRecord(profile)) {
+    return null;
+  }
+
+  const data = normalizeSavedBudgetState(profile.data);
+
+  if (!data) {
+    return null;
+  }
+
+  const now = new Date().toISOString();
+  const name = textValue(profile.name, `Profile ${fallbackIndex + 1}`).trim();
+
+  return {
+    id: textValue(profile.id, createId("profile")),
+    name: name || `Profile ${fallbackIndex + 1}`,
+    createdAt: textValue(profile.createdAt, now),
+    updatedAt: textValue(profile.updatedAt, now),
+    data,
+  };
+};
+
+export const createFinanceProfile = (name: string): FinanceProfile => {
+  const now = new Date().toISOString();
+
+  return {
+    id: createId("profile"),
+    name: name.trim(),
+    createdAt: now,
+    updatedAt: now,
+    data: createBlankBudgetState(),
+  };
+};
+
+export const loadFinanceProfiles = (): FinanceProfile[] => {
+  try {
+    const rawProfiles = window.localStorage.getItem(PROFILE_STORAGE_KEY);
+
+    if (rawProfiles) {
+      const parsedProfiles = JSON.parse(rawProfiles) as unknown;
+
+      if (Array.isArray(parsedProfiles)) {
+        return parsedProfiles
+          .map((profile, index) => normalizeFinanceProfile(profile, index))
+          .filter((profile): profile is FinanceProfile => profile !== null);
+      }
+    }
+
+    const legacyState = loadSavedBudgetState();
+
+    return legacyState
+      ? [
+          {
+            id: "legacy-default-profile",
+            name: "Default Profile",
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+            data: legacyState,
+          },
+        ]
+      : [];
+  } catch {
+    return [];
+  }
+};
+
+export const persistFinanceProfiles = (profiles: FinanceProfile[]) => {
+  try {
+    window.localStorage.setItem(PROFILE_STORAGE_KEY, JSON.stringify(profiles));
+  } catch {
+    // Local storage can be unavailable in private windows or restricted contexts.
+  }
+};
+
+export const loadActiveProfileId = () => {
+  try {
+    return window.localStorage.getItem(ACTIVE_PROFILE_STORAGE_KEY);
+  } catch {
+    return null;
+  }
+};
+
+export const persistActiveProfileId = (profileId: string | null) => {
+  try {
+    if (profileId) {
+      window.localStorage.setItem(ACTIVE_PROFILE_STORAGE_KEY, profileId);
+    } else {
+      window.localStorage.removeItem(ACTIVE_PROFILE_STORAGE_KEY);
+    }
+  } catch {
+    // Local storage can be unavailable in private windows or restricted contexts.
+  }
 };
 
 export const loadSavedBudgetState = (): SavedBudgetState | null => {

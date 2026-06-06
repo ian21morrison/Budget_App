@@ -73,9 +73,12 @@ import {
   createBudgetBackupFileName,
   createBudgetBackupJson,
   createDefaultBudgetState,
-  loadSavedBudgetState,
+  createFinanceProfile,
+  loadActiveProfileId,
+  loadFinanceProfiles,
   parseBudgetBackupJson,
-  persistBudgetState,
+  persistActiveProfileId,
+  persistFinanceProfiles,
 } from "@/lib/storage/state";
 import { parseTransactionCsv } from "@/lib/transactions/csv";
 import type {
@@ -85,6 +88,7 @@ import type {
   AccountTaxTreatment,
   AccountType,
   ContributionReturns,
+  FinanceProfile,
   InvestmentContributions,
   MonthlyActual,
   NetWorthSnapshot,
@@ -206,11 +210,44 @@ type InterfaceTheme = "dark" | "light";
 const isInterfaceTheme = (value: string | null): value is InterfaceTheme =>
   value === "dark" || value === "light";
 
+function AppLogo() {
+  return (
+    <div
+      className="grid size-20 place-items-center rounded-lg border border-white/20 bg-[#fff] text-neutral-950 shadow-[0_18px_45px_rgba(0,0,0,0.22)]"
+      aria-hidden="true"
+    >
+      <svg viewBox="0 0 32 32" className="size-14" fill="none">
+        <path d="M5 21h22l-3.5 5H8.5L5 21Z" fill="#18181b" />
+        <path
+          d="M9 23.5h14"
+          stroke="#ffffff"
+          strokeLinecap="round"
+          strokeWidth="1.6"
+        />
+        <path d="M15 6h2v15h-2V6Z" fill="#18181b" />
+        <path d="M9 19h5V9l-5 10Z" fill="#18181b" />
+        <path d="M18 19h6l-6-8v8Z" fill="#18181b" />
+        <path d="M17 6h9l-2 3 2 3h-9V6Z" fill="#10b981" />
+      </svg>
+    </div>
+  );
+}
+
 export default function Home() {
   const [activeNav, setActiveNav] = useState(navItems[0]);
   const [openNavGroups, setOpenNavGroups] = useState<string[]>([]);
   const [interfaceTheme, setInterfaceTheme] =
     useState<InterfaceTheme>("light");
+  const [profiles, setProfiles] = useState<FinanceProfile[]>([]);
+  const [activeProfileId, setActiveProfileId] = useState<string | null>(null);
+  const [lastActiveProfileId, setLastActiveProfileId] = useState<string | null>(
+    null,
+  );
+  const [newProfileName, setNewProfileName] = useState("");
+  const [profileError, setProfileError] = useState("");
+  const [editingProfileId, setEditingProfileId] = useState<string | null>(null);
+  const [editingProfileName, setEditingProfileName] = useState("");
+  const [profileRenameError, setProfileRenameError] = useState("");
   const [isEditingBudget, setIsEditingBudget] = useState(false);
   const [accounts, setAccounts] = useState(defaultBudgetState.accounts);
   const [budgets, setBudgets] = useState(defaultBudgetState.budgets);
@@ -260,45 +297,16 @@ export default function Home() {
 
   useEffect(() => {
     const loadTimer = window.setTimeout(() => {
-      const savedState = loadSavedBudgetState();
+      const savedProfiles = loadFinanceProfiles();
+      const savedActiveProfileId = loadActiveProfileId();
       const savedTheme = window.localStorage.getItem(THEME_STORAGE_KEY);
 
       if (isInterfaceTheme(savedTheme)) {
         setInterfaceTheme(savedTheme);
       }
 
-      if (savedState) {
-        setAccounts(savedState.accounts);
-        setBudgets(savedState.budgets);
-        setDebts(savedState.debts);
-        setGoals(savedState.goals);
-        setRecurringBills(savedState.recurringBills);
-        setNextPaycheckDate(savedState.nextPaycheckDate);
-        setMonthlyIncome(savedState.monthlyIncome);
-        setRetirementPlan(savedState.retirementPlan);
-        setInvestmentContributions(savedState.investmentContributions);
-        setContributionReturns(savedState.contributionReturns);
-        setMonthlyActuals(savedState.monthlyActuals);
-        setTransactions(savedState.transactions);
-        setNetWorthSnapshots(savedState.netWorthSnapshots);
-        setSelectedActualMonth(
-          savedState.monthlyActuals[0]?.month ?? getCurrentMonthKey(),
-        );
-        setCompletedActions(savedState.completedActions);
-        setLastSavedAt(new Date());
-
-        if (
-          LEGACY_BRAND_NAMES.includes(savedState.brandName) ||
-          savedState.brandName !== DEFAULT_BRAND_NAME
-        ) {
-          persistBudgetState({
-            ...savedState,
-            brandName: DEFAULT_BRAND_NAME,
-            dashboardTitle: DEFAULT_DASHBOARD_TITLE,
-          });
-        }
-      }
-
+      setProfiles(savedProfiles);
+      setLastActiveProfileId(savedActiveProfileId);
       setHasLoadedBudgetState(true);
     }, 0);
 
@@ -383,7 +391,7 @@ export default function Home() {
       completedActions,
     ]);
 
-  const restoreState = (nextState: SavedBudgetState) => {
+  const applyStateToDashboard = (nextState: SavedBudgetState) => {
     const stateToRestore = {
       ...nextState,
       dashboardTitle: DEFAULT_DASHBOARD_TITLE,
@@ -406,15 +414,157 @@ export default function Home() {
       stateToRestore.monthlyActuals[0]?.month ?? getCurrentMonthKey(),
     );
     setCompletedActions(stateToRestore.completedActions);
-    persistBudgetState(stateToRestore);
     setLastSavedAt(new Date());
   };
 
   const saveState = (nextState: Partial<SavedBudgetState>) => {
-    const stateToSave = getCurrentState(nextState);
+    if (!activeProfileId) {
+      return;
+    }
 
-    persistBudgetState(stateToSave);
+    const stateToSave = getCurrentState(nextState);
+    const now = new Date().toISOString();
+    const nextProfiles = profiles.map((profile) =>
+      profile.id === activeProfileId
+        ? {
+            ...profile,
+            updatedAt: now,
+            data: stateToSave,
+          }
+        : profile,
+    );
+
+    setProfiles(nextProfiles);
+    persistFinanceProfiles(nextProfiles);
     setLastSavedAt(new Date());
+  };
+
+  const activeProfile = useMemo(
+    () => profiles.find((profile) => profile.id === activeProfileId) ?? null,
+    [activeProfileId, profiles],
+  );
+
+  const selectProfile = (profileId: string) => {
+    const selectedProfile = profiles.find((profile) => profile.id === profileId);
+
+    if (!selectedProfile) {
+      return;
+    }
+
+    const profileData = {
+      ...selectedProfile.data,
+      brandName: DEFAULT_BRAND_NAME,
+      dashboardTitle: DEFAULT_DASHBOARD_TITLE,
+    };
+    const shouldNormalizeBrand =
+      LEGACY_BRAND_NAMES.includes(selectedProfile.data.brandName) ||
+      selectedProfile.data.brandName !== DEFAULT_BRAND_NAME ||
+      selectedProfile.data.dashboardTitle !== DEFAULT_DASHBOARD_TITLE;
+    const nextProfiles = shouldNormalizeBrand
+      ? profiles.map((profile) =>
+          profile.id === profileId
+            ? {
+                ...profile,
+                data: profileData,
+              }
+            : profile,
+        )
+      : profiles;
+
+    setProfiles(nextProfiles);
+    persistFinanceProfiles(nextProfiles);
+    setActiveProfileId(profileId);
+    setLastActiveProfileId(profileId);
+    persistActiveProfileId(profileId);
+    applyStateToDashboard(profileData);
+    setActiveNav(navItems[0]);
+    setOpenNavGroups([]);
+  };
+
+  const createProfile = () => {
+    const trimmedName = newProfileName.trim();
+
+    if (!trimmedName) {
+      setProfileError("Enter a profile name.");
+      return;
+    }
+
+    if (
+      profiles.some(
+        (profile) => profile.name.toLowerCase() === trimmedName.toLowerCase(),
+      )
+    ) {
+      setProfileError("A profile with that name already exists.");
+      return;
+    }
+
+    const nextProfile = createFinanceProfile(trimmedName);
+    const nextProfiles = [...profiles, nextProfile];
+
+    setProfiles(nextProfiles);
+    persistFinanceProfiles(nextProfiles);
+    setNewProfileName("");
+    setProfileError("");
+    setActiveProfileId(nextProfile.id);
+    setLastActiveProfileId(nextProfile.id);
+    persistActiveProfileId(nextProfile.id);
+    applyStateToDashboard(nextProfile.data);
+    setActiveNav(navItems[0]);
+    setOpenNavGroups([]);
+  };
+
+  const startEditingProfile = (profile: FinanceProfile) => {
+    setEditingProfileId(profile.id);
+    setEditingProfileName(profile.name);
+    setProfileRenameError("");
+  };
+
+  const cancelEditingProfile = () => {
+    setEditingProfileId(null);
+    setEditingProfileName("");
+    setProfileRenameError("");
+  };
+
+  const saveProfileName = (profileId: string) => {
+    const trimmedName = editingProfileName.trim();
+
+    if (!trimmedName) {
+      setProfileRenameError("Enter a profile name.");
+      return;
+    }
+
+    if (
+      profiles.some(
+        (profile) =>
+          profile.id !== profileId &&
+          profile.name.toLowerCase() === trimmedName.toLowerCase(),
+      )
+    ) {
+      setProfileRenameError("A profile with that name already exists.");
+      return;
+    }
+
+    const now = new Date().toISOString();
+    const nextProfiles = profiles.map((profile) =>
+      profile.id === profileId
+        ? {
+            ...profile,
+            name: trimmedName,
+            updatedAt: now,
+          }
+        : profile,
+    );
+
+    setProfiles(nextProfiles);
+    persistFinanceProfiles(nextProfiles);
+    cancelEditingProfile();
+  };
+
+  const returnToProfiles = () => {
+    setActiveProfileId(null);
+    setOpenColorPicker(null);
+    setShowContributionAccountPicker(false);
+    setSelectedContributionAccountId("");
   };
 
   useEffect(() => {
@@ -423,6 +573,10 @@ export default function Home() {
     }
 
     const trackTimer = window.setTimeout(() => {
+      if (!activeProfileId || (accounts.length === 0 && debts.length === 0)) {
+        return;
+      }
+
       const todaySnapshot = createNetWorthSnapshot(
         getCurrentDateKey(),
         accounts,
@@ -444,12 +598,33 @@ export default function Home() {
       ].sort((first, second) => first.date.localeCompare(second.date));
 
       setNetWorthSnapshots(nextSnapshots);
-      persistBudgetState(getCurrentState({ netWorthSnapshots: nextSnapshots }));
+      const stateToSave = getCurrentState({ netWorthSnapshots: nextSnapshots });
+      const now = new Date().toISOString();
+      const nextProfiles = profiles.map((profile) =>
+        profile.id === activeProfileId
+          ? {
+              ...profile,
+              updatedAt: now,
+              data: stateToSave,
+            }
+          : profile,
+      );
+
+      setProfiles(nextProfiles);
+      persistFinanceProfiles(nextProfiles);
       setLastSavedAt(new Date());
     }, 0);
 
     return () => window.clearTimeout(trackTimer);
-  }, [accounts, debts, getCurrentState, hasLoadedBudgetState, netWorthSnapshots]);
+  }, [
+    accounts,
+    activeProfileId,
+    debts,
+    getCurrentState,
+    hasLoadedBudgetState,
+    netWorthSnapshots,
+    profiles,
+  ]);
 
   const updateInterfaceTheme = (theme: InterfaceTheme) => {
     setInterfaceTheme(theme);
@@ -502,7 +677,8 @@ export default function Home() {
       return;
     }
 
-    restoreState(importResult.state);
+    applyStateToDashboard(importResult.state);
+    saveState(importResult.state);
   };
 
   const totals = useMemo(
@@ -1487,6 +1663,285 @@ export default function Home() {
     event.currentTarget.select();
   };
 
+  if (!hasLoadedBudgetState) {
+    return (
+      <main
+        data-theme={interfaceTheme}
+        className="grid min-h-screen place-items-center bg-neutral-950 px-4 text-neutral-100"
+      >
+        <div className={`${surface} w-full max-w-md p-6 text-center`}>
+          <h1 className="text-xl font-semibold tracking-tight text-neutral-50">
+            {DEFAULT_BRAND_NAME}
+          </h1>
+          <p className="mt-2 text-sm text-neutral-500">Loading profiles...</p>
+        </div>
+      </main>
+    );
+  }
+
+  if (!activeProfileId) {
+    return (
+      <main
+        data-theme={interfaceTheme}
+        className="min-h-screen bg-neutral-950 text-neutral-100"
+      >
+        <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,rgba(16,185,129,0.08),transparent_34%),linear-gradient(180deg,#0b0b0e_0%,#09090b_42%,#0b0b0d_100%)] px-4 py-6 md:py-10">
+          <div className="mx-auto flex min-h-[calc(100vh-3rem)] w-full max-w-6xl flex-col justify-center gap-6">
+            <div className="flex justify-end">
+              <div className="flex w-fit gap-1.5 rounded-lg border border-white/10 bg-neutral-950/45 p-1.5 shadow-[0_12px_35px_rgba(0,0,0,0.18)]">
+                {(["light", "dark"] as InterfaceTheme[]).map((theme) => (
+                  <button
+                    key={theme}
+                    type="button"
+                    onClick={() => updateInterfaceTheme(theme)}
+                    className={`min-h-9 rounded-md px-3 text-sm font-semibold capitalize transition duration-200 focus:outline-none focus:ring-2 focus:ring-emerald-300/40 ${
+                      interfaceTheme === theme
+                        ? "bg-white text-neutral-950 shadow-sm"
+                        : "text-neutral-400 hover:-translate-y-0.5 hover:bg-white/[0.06] hover:text-neutral-100 hover:shadow-lg"
+                    }`}
+                  >
+                    {theme}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <section className="overflow-hidden rounded-lg border border-white/10 bg-neutral-900/75 shadow-[0_24px_80px_rgba(0,0,0,0.28)]">
+              <div className="grid gap-8 border-b border-white/10 px-5 py-8 md:px-8 lg:grid-cols-[minmax(0,1fr)_360px] lg:items-center">
+                <div className="flex flex-col items-center text-center sm:flex-row sm:items-center sm:text-left">
+                  <AppLogo />
+                  <div className="mt-5 sm:ml-5 sm:mt-0">
+                    <p className="text-sm font-semibold uppercase tracking-[0.14em] text-emerald-300">
+                      {DEFAULT_BRAND_NAME}
+                    </p>
+                    <h1 className="mt-2 text-3xl font-semibold tracking-tight text-neutral-50 md:text-4xl">
+                      A clear view of your finances.
+                    </h1>
+                    <p className="mt-3 max-w-2xl text-sm leading-6 text-neutral-400">
+                      Choose a profile to keep each person, household, or
+                      scenario completely separate.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="rounded-lg border border-white/10 bg-neutral-950/45 p-4">
+                  <p className="text-sm font-semibold text-neutral-100">
+                    Private local profiles
+                  </p>
+                  <p className="mt-2 text-sm leading-6 text-neutral-500">
+                    Profiles save separately on this device, so one profile
+                    never mixes accounts, budgets, transactions, or goals with
+                    another.
+                  </p>
+                </div>
+              </div>
+
+              <div className="grid gap-5 p-4 md:p-6 lg:grid-cols-[minmax(0,1fr)_360px]">
+                <div>
+                  <div className="mb-3 flex flex-col gap-1 px-1 sm:flex-row sm:items-end sm:justify-between">
+                    <div>
+                      <h2 className={sectionTitle}>Select Profile</h2>
+                      <p className={sectionDescription}>
+                        Open a saved profile or rename it before entering.
+                      </p>
+                    </div>
+                    <p className="text-xs font-medium uppercase tracking-[0.08em] text-neutral-500">
+                      {profiles.length} saved
+                    </p>
+                  </div>
+
+                  <div className="grid gap-3">
+                  {profiles.length === 0 ? (
+                    <div className="rounded-lg border border-dashed border-white/15 bg-neutral-950/45 px-5 py-10 text-center shadow-inner">
+                      <div
+                        className="mx-auto grid size-12 place-items-center rounded-lg border border-emerald-300/20 bg-emerald-300/10 text-2xl font-semibold text-emerald-300"
+                        aria-hidden="true"
+                      >
+                        +
+                      </div>
+                      <p className="text-base font-semibold text-neutral-100">
+                        No profiles yet
+                      </p>
+                      <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-neutral-500">
+                        Create your first profile to start with a blank budget,
+                        empty accounts, and no previous dashboard values.
+                      </p>
+                    </div>
+                  ) : (
+                    profiles.map((profile) => {
+                      const isEditingProfile = editingProfileId === profile.id;
+
+                      return (
+                        <div
+                          key={profile.id}
+                          className="group rounded-lg border border-white/10 bg-neutral-950/45 px-4 py-4 shadow-[0_10px_35px_rgba(0,0,0,0.14)] transition duration-200 hover:-translate-y-0.5 hover:border-white/20 hover:bg-white/[0.04] hover:shadow-[0_18px_45px_rgba(0,0,0,0.2)]"
+                        >
+                          <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
+                            <div className="min-w-0">
+                              {isEditingProfile ? (
+                                <form
+                                  onSubmit={(event) => {
+                                    event.preventDefault();
+                                    saveProfileName(profile.id);
+                                  }}
+                                  className="grid gap-2"
+                                >
+                                  <label className="block">
+                                    <span className="sr-only">
+                                      Edit profile name
+                                    </span>
+                                    <input
+                                      type="text"
+                                      value={editingProfileName}
+                                      onChange={(event) => {
+                                        setEditingProfileName(event.target.value);
+                                        setProfileRenameError("");
+                                      }}
+                                      className={`${inputBase} w-full px-3 py-2 text-base font-semibold`}
+                                    />
+                                  </label>
+                                  {profileRenameError ? (
+                                    <p className="text-sm text-rose-300">
+                                      {profileRenameError}
+                                    </p>
+                                  ) : null}
+                                  <div className="flex flex-wrap gap-2">
+                                    <button
+                                      type="submit"
+                                      className="inline-flex min-h-9 items-center justify-center rounded-md bg-emerald-300 px-3 py-2 text-sm font-semibold text-neutral-950 transition duration-200 hover:-translate-y-0.5 hover:bg-emerald-200 hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-emerald-300/40"
+                                    >
+                                      Save
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={cancelEditingProfile}
+                                      className="inline-flex min-h-9 items-center justify-center rounded-md border border-white/10 bg-white/[0.03] px-3 py-2 text-sm font-medium text-neutral-300 transition duration-200 hover:-translate-y-0.5 hover:border-white/20 hover:bg-white/[0.07] hover:text-white hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-white/15"
+                                    >
+                                      Cancel
+                                    </button>
+                                  </div>
+                                </form>
+                              ) : (
+                                <>
+                                  <div className="flex flex-wrap items-center gap-2">
+                                    <p className="truncate text-lg font-semibold text-neutral-50">
+                                      {profile.name}
+                                    </p>
+                            {profile.id === lastActiveProfileId ? (
+                              <span className="rounded-full border border-emerald-300/20 bg-emerald-300/10 px-2.5 py-1 text-xs font-semibold text-emerald-300">
+                                Last used
+                              </span>
+                            ) : null}
+                                  </div>
+                                  <p className="mt-1 text-sm text-neutral-500">
+                                    Updated{" "}
+                                    {new Date(
+                                      profile.updatedAt,
+                                    ).toLocaleDateString([], {
+                                      month: "short",
+                                      day: "numeric",
+                                      year: "numeric",
+                                    })}
+                                  </p>
+                                </>
+                              )}
+                            </div>
+
+                            {!isEditingProfile ? (
+                              <div className="flex flex-wrap gap-2 sm:justify-end">
+                                <button
+                                  type="button"
+                                  onClick={() => startEditingProfile(profile)}
+                                  className="inline-flex min-h-9 items-center justify-center rounded-md border border-white/10 bg-white/[0.03] px-3 py-2 text-sm font-medium text-neutral-300 transition duration-200 hover:-translate-y-0.5 hover:border-white/20 hover:bg-white/[0.07] hover:text-white hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-white/15"
+                                >
+                                  Edit
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => selectProfile(profile.id)}
+                                  className="inline-flex min-h-9 items-center justify-center rounded-md bg-emerald-300 px-3 py-2 text-sm font-semibold text-neutral-950 transition duration-200 hover:-translate-y-0.5 hover:bg-emerald-200 hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-emerald-300/40"
+                                >
+                                  Open
+                                </button>
+                              </div>
+                            ) : null}
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                  </div>
+                </div>
+
+                <form
+                  onSubmit={(event) => {
+                    event.preventDefault();
+                    createProfile();
+                  }}
+                  className="h-fit rounded-lg border border-white/10 bg-neutral-950/45 p-4 shadow-[0_16px_50px_rgba(0,0,0,0.16)]"
+                >
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <h3 className="text-base font-semibold text-neutral-100">
+                        Create New Profile
+                      </h3>
+                      <p className="mt-2 text-sm leading-6 text-neutral-500">
+                        Start with a blank workspace.
+                      </p>
+                    </div>
+                    <span className="rounded-md border border-white/10 px-2 py-1 text-xs font-semibold uppercase tracking-[0.08em] text-neutral-500">
+                      New
+                    </span>
+                  </div>
+                  <label className="mt-4 block">
+                    <span className="text-xs text-neutral-500">
+                      Profile name
+                    </span>
+                    <input
+                      type="text"
+                      value={newProfileName}
+                      onChange={(event) => {
+                        setNewProfileName(event.target.value);
+                        setProfileError("");
+                      }}
+                      className={`${inputBase} mt-1 w-full px-3 py-3 text-sm font-semibold`}
+                      placeholder="Personal, Household, Rental..."
+                    />
+                  </label>
+                  {profileError ? (
+                    <p className="mt-2 text-sm text-rose-300">{profileError}</p>
+                  ) : null}
+                  <div className="mt-4 flex flex-col gap-2 sm:flex-row">
+                    <button
+                      type="submit"
+                      className="inline-flex min-h-10 flex-1 items-center justify-center rounded-md bg-emerald-300 px-4 py-2 text-sm font-semibold text-neutral-950 transition duration-200 hover:bg-emerald-200 hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-emerald-300/40"
+                    >
+                      Create Profile
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setNewProfileName("");
+                        setProfileError("");
+                      }}
+                      className="inline-flex min-h-10 items-center justify-center rounded-md border border-white/10 bg-white/[0.03] px-4 py-2 text-sm font-medium text-neutral-300 transition duration-200 hover:border-white/20 hover:bg-white/[0.07] hover:text-white focus:outline-none focus:ring-2 focus:ring-white/15"
+                    >
+                      Clear
+                    </button>
+                  </div>
+                  <p className="mt-3 text-xs leading-5 text-neutral-600">
+                    No accounts, income, budgets, transactions, goals, or
+                    history are copied in.
+                  </p>
+                </form>
+              </div>
+            </section>
+          </div>
+        </div>
+      </main>
+    );
+  }
+
   return (
     <main
       data-theme={interfaceTheme}
@@ -1660,6 +2115,10 @@ export default function Home() {
                   {DEFAULT_DASHBOARD_TITLE}
                 </h1>
                 <p className="mt-1 px-1 text-sm text-neutral-500">
+                  {activeProfile
+                    ? `${activeProfile.name} profile`
+                    : "Profile selected"}{" "}
+                  ·{" "}
                   {lastSavedAt
                     ? `Saved locally at ${lastSavedAt.toLocaleTimeString([], {
                         hour: "numeric",
@@ -1678,6 +2137,13 @@ export default function Home() {
                   className="hidden"
                 />
                 <div data-report-hidden="true" className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={returnToProfiles}
+                    className={secondaryButton}
+                  >
+                    Switch Profile
+                  </button>
                   <button
                     type="button"
                     onClick={exportData}

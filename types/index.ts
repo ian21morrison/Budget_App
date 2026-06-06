@@ -148,6 +148,14 @@ export type SavedBudgetState = {
   completedActions: string[];
 };
 
+export type FinanceProfile = {
+  id: string;
+  name: string;
+  createdAt: string;
+  updatedAt: string;
+  data: SavedBudgetState;
+};
+
 export type MonthlyActualTotals = {
   spending: number;
   outflow: number;
