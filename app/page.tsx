@@ -11,6 +11,7 @@ import {
 } from "react";
 import { AccountsSection } from "@/components/AccountsSection";
 import { BudgetSection } from "@/components/BudgetSection";
+import { CashFlowForecastSection } from "@/components/CashFlowForecastSection";
 import { ContributionsSection } from "@/components/ContributionsSection";
 import { DebtsSection } from "@/components/DebtsSection";
 import { FinancialOverview } from "@/components/FinancialOverview";
@@ -42,6 +43,7 @@ import {
   getAvailableContributionAccounts,
   getContributionAccounts,
 } from "@/lib/calculations/budget";
+import { calculateCashFlowForecast } from "@/lib/calculations/cashFlowForecast";
 import { calculateRecurringBillsSummary } from "@/lib/calculations/recurringBills";
 import {
   createFinancialReport,
@@ -646,10 +648,6 @@ export default function Home() {
     });
   };
 
-  const generateReport = () => {
-    scrollToSection("reporting");
-  };
-
   const startImportData = () => {
     importFileInputRef.current?.click();
   };
@@ -764,6 +762,24 @@ export default function Home() {
         nextPaycheckDate,
       }),
     [nextPaycheckDate, recurringBills],
+  );
+
+  const cashFlowForecast = useMemo(
+    () =>
+      calculateCashFlowForecast({
+        monthlyActual: selectedMonthlyActual,
+        monthlyIncome,
+        nextPaycheckDate,
+        recurringBills,
+        totals,
+      }),
+    [
+      monthlyIncome,
+      nextPaycheckDate,
+      recurringBills,
+      selectedMonthlyActual,
+      totals,
+    ],
   );
 
   const transactionMonthlyActual = useMemo(
@@ -2158,13 +2174,6 @@ export default function Home() {
                   >
                     Import Data
                   </button>
-                  <button
-                    type="button"
-                    onClick={generateReport}
-                    className={primaryButton}
-                  >
-                    Generate Report
-                  </button>
                 </div>
                 <div
                   data-report-hidden="true"
@@ -2259,6 +2268,8 @@ export default function Home() {
               retirementProjection={retirementProjection}
               totals={totals}
             />
+
+            <CashFlowForecastSection forecast={cashFlowForecast} />
 
             <div className="mt-5">
               <ReportSection

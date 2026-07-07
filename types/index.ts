@@ -196,6 +196,30 @@ export type RecurringBillsSummary = {
   nextUnpaidBill: RecurringBill | null;
 };
 
+export type CashFlowForecastHorizon = {
+  days: number;
+  income: number;
+  bills: number;
+  debtPayments: number;
+  transfers: number;
+  contributions: number;
+  totalOutflow: number;
+  netCashFlow: number;
+  endingCash: number;
+};
+
+export type CashFlowForecast = {
+  startingCash: number;
+  nextPaycheckDate: string;
+  monthlyIncome: number;
+  monthlyDebtPayments: number;
+  monthlyTransfers: number;
+  monthlyContributions: number;
+  monthlyPlannedCashFlow: number;
+  runwayDays: number | null;
+  horizons: CashFlowForecastHorizon[];
+};
+
 export type RetirementProjectionAccount = {
   id: string;
   name: string;
